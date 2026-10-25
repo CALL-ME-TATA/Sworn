@@ -1,0 +1,231 @@
+{
+  "synced_at": "2026-10-25T16:00:56.788Z",
+  "network": "devnet",
+  "total": 122,
+  "readable": 104,
+  "agents": [
+    {
+      "mint": "ExB6XdXUqNbuQ73mNgWHDuzaXbca43Bej1kMBN1q8wmu",
+      "name": "MyAgent",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "7CWamhXVEieFx1tBVn2fZfWTocyWnzZBQrRCbdqmtk62",
+      "name": "E2ETestAgent",
+      "endpoint": "https://example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "96FRUp8cmWnhoGCC8jLNqdkQLAxNw8PA2k2GifPweR41",
+      "name": "ProductionizeTestBot",
+      "endpoint": "https://example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "2jKtJ51tbLf8tsko59483ksnxpnRK1AHyaRdZQhMoq6y",
+      "name": "Xona Agent",
+      "endpoint": "https://api.xona-agent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "3bRk2B8J6gKSdALTq7d4oHPapyXA6QjKXVyLVCSmhWqB",
+      "name": "AgentBox: agentbox-operator-2420",
+      "endpoint": "https://agentbox-operator-2420f55e.agentbox.fyi",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "2PYpeN6PWUpG4bwaGYGix2ASd2M18V18MVj9aHSk4d1n",
+      "name": "VerifyBot",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "BWeeFMaUmgVwgTCotemRF4BogtvVDiVPsNFfmbmP1dRv",
+      "name": "MyAgent",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "AWsRvUprVn7sqPUMDhazR3W5J5oCA5EuB7VtpMHZyYXV",
+      "name": "MyAgent",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "2oaiYNbkUaveMuNCTb9PmugegAUkthMtb1HaA8rXfhNR",
+      "name": "MyAgent",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "25sSRqrQNs5GqBUimp7xZ76CTNYqNBuWqGnL4SmJyeGQ",
+      "name": "TestBeginner",
+      "endpoint": "https://example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "KhUCUxcX1r1Q8VXFFPxmfysE2i6dj1wTxbYp59DmHA5",
+      "name": "TestFreshUserAgent",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "AK2iXnJRmWHSvA34rciRVk9hFAYkNhD3fSj4tHiKuV69",
+      "name": "TestAgent",
+      "endpoint": "https://myagent.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "7dzeqEUmqHcQGqnTWmxzdo8AzfugXtYyYomPQCQqQ5qo",
+      "name": "TestAgent",
+      "endpoint": "https://testagent.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "3WvuxFpgJsSijkMwTMkThijyo31tYGxhd6uPDq9g3obD",
+      "name": "TestFreshAgent",
+      "endpoint": "https://test.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "EVfF46dAT5fFWQrcQ2jhduLVuowHDcUskRaNd3nWSX7K",
+      "name": "CodeGuardian",
+      "endpoint": "https://codeguardian.dev/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "BN2epd2pHW9XJL1wuzTxxbPTCc5B2crbptrSEqBeuQ9B",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": [
+        "advanced_reasoning_planning/strategic_planning"
+      ]
+    },
+    {
+      "mint": "7qNAeKoK4ZzXqR1TVWgfeD3JsWAS7x3hpLwJxYWq7EVN",
+      "name": "Trading Bot",
+      "endpoint": "https://api.tradingbot.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "DL9qrzUdcvDUsPj47hoJ2NDVsQmJr7GB84gpczEh84sj",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "CEL17imkawPKV4A4DS7rKQF2E5bfJ2xQgacH3JHpBZpg",
+      "name": "Transfer Example Agent",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "6E6KNiPYXLsP3F2vpkSAZVYF6GkHCbVEJe5gevNn42kP",
+      "name": "Update Example Agent",
+      "endpoint": "https://api.example.com/mcp-updated",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "fNLiwvuwrYJjkDwpYmHRxbrezfU2paR4rSAqp4GnPNd",
+      "name": "Transfer Example Agent",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "BXfHKaBLCig1mda41tDyXNRiSuJ53ddAcjaRyd3roqiG",
+      "name": "Update Example Agent",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "8JSRfukEbtbyaYohw1ZJjpL8LPEtek4yoqvJorWHq58S",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": [
+        "advanced_reasoning_planning/strategic_planning"
+      ]
+    },
+    {
+      "mint": "4CG57ZaMLhmNXrbjE17hu4g2cbZExp2mhw3hJxGygyvW",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "59PuU6fZmqKY6Gi4mJQzBaLBfRZ9ZDWdJsZD8gDnZiR6",
+      "name": "Trading Bot",
+      "endpoint": "https://api.tradingbot.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "BSqnwdMgc4FwMTHHJfBbNbd3wwgeEXpvS6tS57xKWkZE",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "AhRkryJmsToaSXNZG86TGTZuQgT67by7dLX1i76wpC4c",
+      "name": "Transfer Example Agent",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "9n7UkGTQeJm3mWEHYsYccMz9XEZ735WpZGNVBBS7NRse",
+      "name": "Update Example Agent",
+      "endpoint": "https://api.example.com/mcp-updated",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "E7VftuvEvEieaX21VV9JWsEb1UgdWCRjtPkpqNTh3Ugb",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": [
+        "advanced_reasoning_planning/strategic_planning"
+      ]
+    },
+    {
+      "mint": "95XnNeUgAba5K7jL6uzzhXjyniFwp3iBSeGPRc3EYKJY",
+      "name": "Trading Bot",
+      "endpoint": "https://api.tradingbot.com/mcp",
+      "type": "MCP",
+      "skills": []
+    },
+    {
+      "mint": "3oVbjeesoAWXXRzaVWFvCJaesJrhYrx2nV2pmNuqP2PN",
+      "name": "My AI Assistant",
+      "endpoint": "https://api.example.com/mcp",
+      "type": "MCP",
+      "skills": []
+    }
+  ]
+}

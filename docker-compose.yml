@@ -1,0 +1,64 @@
+# Everything runs locally: docker compose up --build, then open http://localhost:3000
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sworn
+      POSTGRES_PASSWORD: sworn
+      POSTGRES_DB: sworn
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sworn"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  # Solana bridge: 8004-solana SDK (@solana/web3.js over the registry's Anchor programs)
+  registry:
+    build: ./registry
+    env_file: .env
+    environment:
+      REGISTRY_PORT: "3002"
+    ports: ["3002:3002"]
+    volumes: [./data:/srv/data]
+
+  # FastAPI + LangGraph: the orchestrator and our agents
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://sworn:sworn@postgres:5432/sworn
+      REDIS_URL: redis://redis:6379/0
+      REGISTRY_URL: http://registry:3002
+    ports: ["3001:3001"]
+    volumes: [./data:/srv/data]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      registry: { condition: service_started }
+
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:3001
+    ports: ["3000:3000"]
+    depends_on: [backend]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes: [./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro]
+    ports: ["9090:9090"]
+    depends_on: [backend]
+
+volumes:
+  pgdata:
+  redisdata:

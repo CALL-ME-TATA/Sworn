@@ -1,0 +1,48 @@
+{
+  "rows": [
+    {
+      "question": "What causes coral bleaching and where has it happened?",
+      "baseline_used": 4,
+      "baseline_unsupported": 1,
+      "ours_used": 6,
+      "ours_unsupported": 0,
+      "ours_run": "run_1792783201367"
+    },
+    {
+      "question": "How was penicillin discovered and why did it matter?",
+      "baseline_used": 4,
+      "baseline_unsupported": 1,
+      "ours_used": 6,
+      "ours_unsupported": 0,
+      "ours_run": "run_1792783218407"
+    },
+    {
+      "question": "What is the James Webb Space Telescope and what has it observed?",
+      "baseline_used": 4,
+      "baseline_unsupported": 1,
+      "ours_used": 6,
+      "ours_unsupported": 0,
+      "ours_run": "run_1792783225448"
+    },
+    {
+      "question": "Why did the Roman Empire split into east and west?",
+      "baseline_used": 3,
+      "baseline_unsupported": 0,
+      "ours_used": 3,
+      "ours_unsupported": 0,
+      "ours_run": "run_1792783246320"
+    },
+    {
+      "question": "How do vaccines train the immune system?",
+      "baseline_used": 3,
+      "baseline_unsupported": 0,
+      "ours_used": 3,
+      "ours_unsupported": 0,
+      "ours_run": "run_1792783265819"
+    }
+  ],
+  "summary": {
+    "baseline_unsupported_pct": 17,
+    "ours_unsupported_pct": 0
+  }
+}

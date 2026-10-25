@@ -1,0 +1,145 @@
+"""Our agents, good and deliberately bad. Each is a handler: input dict -> output dict.
+The orchestrator only ever reaches them over HTTP (POST /agents/{name}), exactly like third-party agents."""
+import asyncio
+
+from . import rules
+from .config import CONFIG
+from .llm import ask
+from .sources import quote_in, search_wikipedia, source_text, title_of, wiki_text, wiki_url
+
+RULE_PAGE_CHARS = 12000  # rule mode: the start of each page (its trial pass rate was measured with this)
+LLM_PAGE_CHARS = 40000   # model mode ranks sentences from most of each page, so specific facts are reachable
+SHORTLIST = 20           # facts the reasoner chooses from; about 1k tokens, well under Groq's free 8k tokens/minute
+
+
+async def plan_question(question: str) -> list[dict]:
+    """[{question, search}]: only the sub-questions the answer needs, each with a focused Wikipedia query."""
+    if not CONFIG.LLM:
+        return [{"question": q, "search": q} for q in rules.plan(question, CONFIG.SUBQUESTIONS)]
+    res = await ask(
+        f"Plan research for this question using Wikipedia.\nQuestion: {question}\n\n"
+        f"Break it into at most {CONFIG.SUBQUESTIONS} self-contained sub-questions that are each needed for the answer. "
+        "Do not add background or definition questions the user did not ask for; a simple question needs only one. "
+        "For each, write a short Wikipedia search query naming the most specific article likely to hold the answer "
+        '(for example "2026 Valorant Champions", not "who won VCT").\n'
+        'Reply with JSON only: {"subquestions":[{"question":"...","search":"..."}]}',
+        json_mode=True,
+    )
+    plan = []
+    for s in res.get("subquestions", []):
+        if isinstance(s, str):
+            s = {"question": s, "search": s}
+        if isinstance(s, dict) and s.get("question"):
+            plan.append({"question": s["question"], "search": s.get("search") or s["question"]})
+    return plan[:CONFIG.SUBQUESTIONS]
+
+
+async def planner(inp):
+    return {"subquestions": await plan_question(str(inp.get("question", "")))}
+
+
+async def retriever(inp):
+    """Fetches relevant sources. The planner's focused query finds the specific article, not just the general one."""
+    titles = await search_wikipedia(inp.get("search") or inp.get("sub_question", ""), 3 if CONFIG.LLM else 2)
+    return {"sources": [{"title": t, "url": wiki_url(t)} for t in titles]}
+
+
+async def reader(inp):
+    """Reads each source and extracts the sentences that bear on the sub-question. Each fact is the page's own sentence."""
+    limit = LLM_PAGE_CHARS if CONFIG.LLM else RULE_PAGE_CHARS
+    sources = [s for s in inp.get("sources", []) if isinstance(s, dict) and s.get("url")][:3]
+    texts = await asyncio.gather(*(source_text(s["url"]) for s in sources), return_exceptions=True)
+    pages = [{"url": s["url"], "text": t[:limit]} for s, t in zip(sources, texts) if isinstance(t, str)]
+    query = f"{inp.get('sub_question', '')} {inp.get('search') or ''}"
+    return {"facts": rules.pick_sentences(query, pages, SHORTLIST if CONFIG.LLM else 3)}
+
+
+async def reasoner(inp, style: str, count: int):
+    """Infers which facts answer the sub-question and states each as a claim. The quote stays the fact's exact sentence."""
+    facts = [f for f in inp.get("facts", []) if isinstance(f, dict) and f.get("quote") and f.get("source_url")]
+    if not facts:
+        return {"claims": []}
+    if not CONFIG.LLM:
+        return {"claims": [{"text": f["quote"], "quote": f["quote"], "source_url": f["source_url"]} for f in facts[:count]]}
+    sub, question = inp.get("sub_question", ""), inp.get("question")
+    res = await ask(
+        (f"Overall question: {question}\n" if question and question != sub else "") + f"Sub-question: {sub}\n\n"
+        "Numbered sentences from Wikipedia:\n" + "\n".join(f"[{i}] {f['quote']}" for i, f in enumerate(facts)) + "\n\n"
+        f"Choose up to {count} sentences that directly answer the sub-question and restate each as a short factual claim. {style}\n"
+        "Each claim may only say what its sentence says. Skip sentences that are merely on the same topic. "
+        "If no sentence answers the sub-question, return an empty list; that is better than an off-topic claim.\n"
+        'Reply with JSON only: {"claims":[{"pick":<sentence number>,"text":"..."}]}',
+        json_mode=True,
+    )
+    claims = []
+    for c in res.get("claims", []):
+        i = c.get("pick") if isinstance(c, dict) else None
+        if isinstance(i, int) and 0 <= i < len(facts) and isinstance(c.get("text"), str) and c["text"].strip():
+            claims.append({"text": c["text"].strip(), "quote": facts[i]["quote"], "source_url": facts[i]["source_url"]})
+    return {"claims": claims[:count]}
+
+
+async def verifier(inp):
+    claim, quote, url = inp.get("claim", ""), inp.get("quote"), inp.get("source_url", "")
+    try:
+        text = await source_text(url)
+    except Exception as err:  # noqa: BLE001 - any fetch failure means we could not check
+        return {"verdict": "unreachable", "reason": str(err)}
+    if not quote_in(text, quote):
+        return {"verdict": "unsupported", "reason": "quote not found on the source page"}
+    if not CONFIG.LLM:
+        res = rules.supports(claim, quote)
+    else:
+        # The article title is context the sentence relies on ("2026 Valorant Champions" carries the year).
+        res = await ask(
+            f'Claim: {claim}\nSource article: {title_of(url) or url}\nQuote from that article: "{quote}"\n\n'
+            "Does the quote, read as part of that article, support the claim? Names, numbers and dates must match; "
+            "the article title counts as context (for example the year or event it covers), but nothing else may be assumed.\n"
+            'Reply with JSON only: {"supported": true or false, "reason": "one short sentence"}',
+            json_mode=True,
+        )
+    return {"verdict": "supported" if res.get("supported") is True else "unsupported", "reason": res.get("reason")}
+
+
+async def generator(inp):
+    question, claims = inp.get("question", ""), inp.get("claims", [])
+    if not CONFIG.LLM:
+        return {"answer": rules.write(claims)}
+    listing = "\n".join(f"[{c['id']}] {c['text']}" for c in claims)
+    answer = await ask(
+        f"Question: {question}\n\nVerified claims:\n{listing}\n\n"
+        "Write a precise answer using only these claims: at most 3 sentences and about 80 words. "
+        "The first sentence must answer the question directly (who, what, when or how), with no preamble. "
+        "Leave out any claim that does not help answer the question; you do not have to use them all. "
+        'If the claims do not contain the answer, say so plainly in one sentence (for example "The sources found do not say who won"), '
+        "then add at most one closely related fact; do not describe loosely related facts. "
+        'Put the claim ID in square brackets right after the full stop of each sentence that uses it, like "... in 1928. [c1]". '
+        "Do not add facts that are not in the claims. Reply with the answer text only."
+    )
+    return {"answer": answer.strip()}
+
+
+async def bad_liar(inp):
+    """Deliberately bad: invents a claim and a quote that is not on the page."""
+    sub = inp.get("sub_question", "")
+    return {"claims": [{"text": f'The answer to "{sub}" is 42.', "source_url": wiki_url("42 (number)"),
+                        "quote": "Experts agree the answer is always exactly 42."}]}
+
+
+async def bad_slow(inp):
+    """Deliberately bad: answers long after any timeout."""
+    await asyncio.sleep(60)
+    return {"sources": []}
+
+
+HANDLERS = {
+    "planner-a": planner,
+    "retriever-a": retriever,
+    "retriever-b": retriever,
+    "reader-a": reader,
+    "reasoner-a": lambda inp: reasoner(inp, "Prefer specific numbers, dates and names.", 3),
+    "verifier-a": verifier,
+    "generator-a": generator,
+    "bad-liar": bad_liar,
+    "bad-slow": bad_slow,
+}

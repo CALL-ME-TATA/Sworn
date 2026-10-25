@@ -1,0 +1,10 @@
+node_modules/
+.next/
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+wallet.json
+data/wiki-cache.json
+*.zip
+.impeccable/

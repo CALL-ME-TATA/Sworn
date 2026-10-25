@@ -1,0 +1,52 @@
+{
+  "retriever-a": {
+    "asset": "DjE7pFQnyqPvXmNsLAxco4FgsLrSD8AdQRB6MNBPWGyd",
+    "role": "retriever",
+    "signature": "5Dyr2juAfL3Zeo3Ci8nkU1mVBfkvyrYnn8PWK74Ycq3bheJayvjgDWf2iPmsJMKNrxB4nnVM4GSVUJEFaNFmKKR1"
+  },
+  "retriever-b": {
+    "asset": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+    "role": "retriever",
+    "signature": "5McSc1xRkR4jGipEzduqFQN5vbRHaUYAD2Uft1BiniZyBjEumqRTgT4wCh3wXRrZt1SL89vrR4CMtBREnXjJPAA1"
+  },
+  "verifier-a": {
+    "asset": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+    "role": "verifier",
+    "signature": ""
+  },
+  "writer-a": {
+    "asset": "AbCgn3qQ3UTTuaf6j79po66MpUzP7Zqgwu4ToetKqQwB",
+    "role": "writer",
+    "signature": "4wqMeT3sEz7GVcDpoQwDZ31suByAF8AyMnPqbQEMtySMpHpRbSDDSXC8QuogjtN8o7HtaHKidrdyAMCqgngzY7xv"
+  },
+  "bad-liar": {
+    "asset": "Aav1ANH241JWqKK9kWtnH8NcZe861ig6mvB6juUiFxeQ",
+    "role": "retriever",
+    "signature": "3HraDpRo8UM72be4kVU2RG3mPqNgtqKMseZt9rRatAZESW3oSWXygucfJVBSJL3VKU6datGXmi9kH7TKkaZbNeja"
+  },
+  "bad-slow": {
+    "asset": "DDrF9QRCSZjkJ1Mq7FrGdz7DvWTdBLLoXLwVRLNXN1yN",
+    "role": "retriever",
+    "signature": "5gtSm7qBRcj37tCUFMjxhWwaQcWMmExY5TFLnbkwRB4B7yaiYUZoit5nmFT7qZamGmEkXEAVLzSoErzEiR9hFt8Q"
+  },
+  "planner-a": {
+    "asset": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+    "role": "planner",
+    "signature": "3SXUrJxQoZqZy4YACqQFLt2iBrPS2Y8VXGjUhvaej1FRwDSxpX6sL2tmz6K2URtuKpmhvmdUmV1RwaXb8gd7ioqo"
+  },
+  "reader-a": {
+    "asset": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+    "role": "reader",
+    "signature": "26C3EZr5YtECnd4ADDUP2pGAzv66gsvM9YbgnGaVVdwX3qKXLHZGMibSvuTPEaxgh7WQ1XCdySRw4WELPic7C84h"
+  },
+  "reasoner-a": {
+    "asset": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+    "role": "reasoner",
+    "signature": "RmdAj6CzfZGXY8W1QiNnLicePEFBiQ8BkeZiVF9Shry5XfZw3Jcnsd5f3nKUSW2qDDu3L4HErx49nLnKiPzACGP"
+  },
+  "generator-a": {
+    "asset": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX",
+    "role": "generator",
+    "signature": "2HDxsmfzJNvSHr1jbx5oSTKs9G7nNQMD7fvUVHg572LkHtdfp5Sf69KHCVuMuNoAvEChZPezeGWULTSsrGbpPo8X"
+  }
+}
