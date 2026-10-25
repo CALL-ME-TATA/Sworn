@@ -24,7 +24,7 @@ async def baseline(question: str) -> list[dict]:
     plan = (await call("planner-a", "planner", {"question": question}, "p1") or {}).get("subquestions", [])
     claims = []
     for i, step in enumerate(plan):
-        inp = {"sub_question": step["question"], "search": step.get("search"), "question": question}
+        inp = {"sub_question": step["question"], "search": step.get("search"), "web": step.get("web"), "question": question}
         sources = (await call("retriever-a", "retriever", inp, f"t{i + 1}") or {}).get("sources", [])
         facts = (await call("reader-a", "reader", inp | {"sources": sources}, f"t{i + 1}-read") or {}).get("facts", [])
         out = await call(REASONERS[i % len(REASONERS)], "reasoner", inp | {"facts": facts}, f"t{i + 1}-reason") or {}

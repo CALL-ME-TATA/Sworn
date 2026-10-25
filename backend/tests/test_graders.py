@@ -35,6 +35,16 @@ def test_rule_reader_prefers_numbers_for_when_questions_and_rule_planner_splits(
     assert plan("How do vaccines work?", 3) == ["How do vaccines work?"]
 
 
+def test_web_pages_keep_price_lines_and_every_page_gets_a_share():
+    shop = "Crucial 32GB DDR5-5600 SODIMM laptop memory $89.99\nFree shipping on all orders"
+    assert sentences(shop) == []
+    assert sentences(shop, loose=True) == ["Crucial 32GB DDR5-5600 SODIMM laptop memory $89.99"]
+    long_article = " ".join(f"Laptop memory modules of type {i} are described in this long article paragraph." for i in range(30))
+    pages = [{"url": "wiki", "text": long_article}, {"url": "shop", "text": shop, "loose": True}]
+    picks = pick_sentences("What is the price of 32GB laptop memory?", pages, 4)
+    assert len(picks) == 4 and any(p["source_url"] == "shop" for p in picks)
+
+
 def test_page_text_is_article_prose_only_even_when_attributes_contain_gt():
     html = """<table class="infobox"><tr><td>Coral bleachingPhenomenon</td></tr></table>
     <p data-mw='{"name":{"wt":"A <br /> B"}}'>Corals turn <b>white</b> when stressed.<sup class="mw-ref reference"><a>[1]</a></sup></p>

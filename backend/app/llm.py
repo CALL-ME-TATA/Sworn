@@ -21,7 +21,8 @@ def client() -> AsyncOpenAI:
     if _client is None:
         base_url, key_env = ENDPOINTS[CONFIG.PROVIDER]
         # The SDK retries 429s and 5xx with backoff and honours retry-after, so a busy minute is not a broken agent.
-        _client = AsyncOpenAI(base_url=base_url, api_key=os.getenv(key_env, "missing"), max_retries=2, timeout=60)
+        # Groq's free tier allows 8,000 tokens a minute; its 429s ask for a few seconds' wait, so retry a few times.
+        _client = AsyncOpenAI(base_url=base_url, api_key=os.getenv(key_env, "missing"), max_retries=4, timeout=60)
     return _client
 
 

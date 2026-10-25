@@ -18,8 +18,8 @@ class CONFIG:
     MIN_SCORE = 40             # average feedback below this = skip...
     MIN_FEEDBACKS = 3          # ...but only once there are this many ratings, so one unlucky trial is not a ban
     ALIVE_TIMEOUT = 5.0
-    TRIAL_TIMEOUT = 15.0
-    TASK_TIMEOUT = 20.0
+    TRIAL_TIMEOUT = 30.0       # long enough for the LLM client to wait out a rate-limit pause
+    TASK_TIMEOUT = 30.0
     BREAKER_FAILS = 3          # consecutive bad replies before an agent is marked dead
     SUBQUESTIONS = 3
     THIRD_PARTY_RETRIEVERS = 3  # real 8004 registry agents from other people, trialled as retrievers
@@ -35,6 +35,8 @@ class CONFIG:
     DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://sworn:sworn@localhost:5432/sworn")
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
     WIKI_CONTACT = os.getenv("WIKI_CONTACT", "contact not set")
+    TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")  # set it to search the web as well as Wikipedia
+    WEB = bool(os.getenv("TAVILY_API_KEY"))
 
 
 # OASF skills each role is discovered by (slugs must be in the 8004-solana SDK's getAllSkills() list).

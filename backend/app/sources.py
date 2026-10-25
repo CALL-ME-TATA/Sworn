@@ -117,17 +117,63 @@ def html_to_text(html: str) -> str:
 
 
 def title_of(url: str) -> str:
-    return unquote(url.split("/wiki/")[1] if "/wiki/" in url else "").replace("_", " ")
+    if "/wiki/" in url:
+        return unquote(url.split("/wiki/")[1]).replace("_", " ")
+    return re.sub(r"^www\.", "", httpx.URL(url).host) if url.startswith("http") else ""
+
+
+# ---------- web search (Tavily) ----------
+# Wikipedia has no prices, release schedules or very recent events; the web does.
+# The page text Tavily returns is cached under the URL, so the reader and the verifier see exactly the same text.
+WEB_TTL = 7 * 24 * 3600
+
+
+def clean_web_text(text: str) -> str:
+    text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", text)  # markdown links and images -> their text
+    text = re.sub(r"[ \t]+", " ", text)
+    return "\n".join(line.strip(" #*>-|") for line in text.splitlines() if line.strip())
+
+
+async def search_web(query: str, limit: int = 3) -> list[dict]:
+    """[{title, url}] from Tavily, skipping Wikipedia (already covered) and pages without text. [] when off or failing."""
+    if not CONFIG.WEB or not query:
+        return []
+    key = f"web-search:{limit}:{query}"
+    hit = await _cached(key)
+    if hit is not None:
+        return hit
+    try:
+        res = await client().post("https://api.tavily.com/search", timeout=25, headers={"Authorization": f"Bearer {CONFIG.TAVILY_API_KEY}"},
+                                  json={"query": query, "max_results": limit + 2, "search_depth": "basic", "include_raw_content": "text"})
+        res.raise_for_status()
+        results = res.json().get("results", [])
+    except Exception as err:  # noqa: BLE001 - web search is extra coverage; Wikipedia still works without it
+        print(f"web search failed: {err}")
+        return []
+    out = []
+    for x in results:
+        text = clean_web_text(x.get("raw_content") or x.get("content") or "")
+        if "wikipedia.org" in x.get("url", "") or len(text) < 200:
+            continue
+        await store.redis.set(f"web:{x['url']}", json.dumps(text[:60000]), ex=WEB_TTL)
+        out.append({"title": x.get("title") or title_of(x["url"]), "url": x["url"]})
+    out = out[:limit]
+    await store.redis.set(f"wiki:{key}", json.dumps(out), ex=24 * 3600)  # results go stale faster than pages
+    return out
 
 
 async def source_text(url: str) -> str:
-    """Plain text of any source URL; Wikipedia pages go through the API so quotes match the text agents saw."""
+    """Plain text of any source URL; Wikipedia pages go through the API and web pages come from the text the search
+    returned, so quotes match the text agents saw."""
     m = re.match(r"^https://en\.wikipedia\.org/wiki/([^#?]+)", url)
     if m:
         return await wiki_text(unquote(m.group(1)).replace("_", " "))
+    cached = await store.redis.get(f"web:{url}")
+    if cached:
+        return json.loads(cached)
     res = await client().get(url)
     res.raise_for_status()
-    return re.sub(r"<[^>]+>", " ", res.text)
+    return html_to_text(res.text) or re.sub(r"<[^>]+>", " ", res.text)
 
 
 def normalize(s) -> str:

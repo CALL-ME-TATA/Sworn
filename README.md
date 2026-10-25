@@ -20,9 +20,10 @@ hire -> plan -> retrieve -> read -> reason -> verify -> generate -> record
    reader, reasoner, verifier and generator.
 2. **Screen every candidate.** On-chain reputation, then liveness, then a known-answer trial graded by code.
    Fail any one and it is out.
-3. **Planner agent** splits the question into sub-questions, each with a focused search.
+3. **Planner agent** splits the question into sub-questions, each with a Wikipedia query and a web query.
 4. **Hired team.**
-   - The retriever fetches sources.
+   - The retriever fetches sources: Wikipedia articles, plus web pages through Tavily when `TAVILY_API_KEY`
+     is set (prices, release dates and recent events that Wikipedia doesn't record).
    - The reader extracts facts.
    - The reasoner states claims.
    - A verifier that is not the producer re-reads each quote on its source page.
@@ -53,7 +54,7 @@ carries its outcome and links the full run report.
 ## Run it
 
 ```bash
-cp .env.example .env            # add GROQ_API_KEY and WIKI_CONTACT
+cp .env.example .env            # add GROQ_API_KEY, TAVILY_API_KEY and WIKI_CONTACT
 cd registry && npm install && npm run keygen && cd ..   # two devnet wallets in .env; fund both from Phantom
 docker compose up --build       # frontend :3000, backend :3001, registry bridge :3002, Postgres, Redis, Prometheus
 docker compose exec backend python -m app.register      # put our 9 agents on devnet (once)

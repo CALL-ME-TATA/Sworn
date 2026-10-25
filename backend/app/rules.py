@@ -34,7 +34,9 @@ SPLIT = re.compile(r"(?<=[.!?])\s+(?=[\"“(]?[A-Z0-9])")
 END = re.compile(r"[.!?][\"”)]?$")
 
 
-def sentences(text: str) -> list[str]:
+def sentences(text: str, loose: bool = False) -> list[str]:
+    """Whole sentences of 40 to 320 characters. loose (web pages) also keeps short factual lines without a full stop,
+    such as a price listing "Crucial 32GB DDR5-5600 SODIMM $89.99", as long as they contain a number."""
     out = []
     for para in re.split(r"\n+", text):
         current = ""
@@ -45,25 +47,35 @@ def sentences(text: str) -> list[str]:
                 current = ""
         if current:
             out.append(current.strip())
-    return [s for s in out if 40 <= len(s) <= 320 and END.search(s)]
+    whole = [s for s in out if 40 <= len(s) <= 320 and END.search(s)]
+    if not loose:
+        return whole
+    lines = [s for s in out if 20 <= len(s) <= 320 and not END.search(s) and re.search(r"\d", s) and len(s.split()) >= 3]
+    return whole + lines
 
 
-WANTS_NUMBER = re.compile(r"\b(when|what year|in what year|how many|how much|how long|how far|what temperature)\b", re.I)
+WANTS_NUMBER = re.compile(r"\b(when|what year|in what year|how many|how much|how long|how far|what temperature|price|prices|cost|costs)\b", re.I)
 
 
 def pick_sentences(question: str, pages: list[dict], count: int) -> list[dict]:
-    """Sentences that share the most content words with the question. Returns [{quote, source_url}]."""
+    """Sentences that share the most content words with the question. Returns [{quote, source_url}].
+    Each page gets a fair share of the picks first, so one long article cannot crowd out the other sources."""
     q = set(words(question))
     wants_number = bool(WANTS_NUMBER.search(question))
-    scored = []
+    per_page = []
     for rank, p in enumerate(pages):
-        for i, s in enumerate(sentences(p["text"])):
+        scored = []
+        for i, s in enumerate(sentences(p["text"], loose=p.get("loose", False))):
             overlap = len({w for w in words(s) if w in q})
             bonus = (1 if wants_number and re.search(r"\d", s) else 0) - rank * 0.5  # trust the top search hit more
             if overlap:
                 scored.append((overlap + bonus - i * 0.001, s, p["url"]))  # ties go to earlier sentences
-    scored.sort(key=lambda x: -x[0])
-    return [{"quote": s, "source_url": url} for _, s, url in scored[:count]]
+        per_page.append(sorted(scored, key=lambda x: -x[0]))
+    share = max(1, count // max(1, len(pages)))
+    picked = [x for page in per_page for x in page[:share]][:count]
+    rest = sorted((x for page in per_page for x in page[share:]), key=lambda x: -x[0])
+    best = sorted(picked + rest[:count - len(picked)], key=lambda x: -x[0])
+    return [{"quote": s, "source_url": url} for _, s, url in best]
 
 
 def supports(claim: str, quote: str) -> dict:

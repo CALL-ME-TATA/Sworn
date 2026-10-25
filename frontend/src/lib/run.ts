@@ -11,7 +11,7 @@ export type Hiring = {
 };
 export type Member = { asset: string; name: string };
 export type Task = {
-  id: string; question: string; search: string; planned_by_name?: string;
+  id: string; question: string; search: string; web?: string; planned_by_name?: string;
   sources?: { title: string; url: string }[]; retrieved_by_name?: string;
   facts?: unknown[]; read_by_name?: string; reasoned_by?: string; reasoned_by_name?: string;
 };
@@ -67,7 +67,16 @@ export function progress(r: Run): number {
 }
 
 export const deadSet = (r: Run) => new Set([...(r.dead ?? []), ...r.failovers.map((f) => f.from)]);
-export const sourceName = (url?: string) => decodeURIComponent((url ?? "").split("/wiki/")[1] ?? "source").replace(/_/g, " ");
+/** "Penicillin" for a Wikipedia article, the site name ("tomshardware.com") for any other page. */
+export function sourceName(url?: string) {
+  if (!url) return "source";
+  if (url.includes("/wiki/")) return decodeURIComponent(url.split("/wiki/")[1]).replace(/_/g, " ");
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "source";
+  }
+}
 export const citedIds = (answer?: string | null) => [...(answer ?? "").matchAll(/\[(c\d+)\]/g)].map((m) => m[1]);
 export const seconds = (a: string, b: string) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 1000));
 export const explorer = (kind: "address" | "tx", id: string) => `https://explorer.solana.com/${kind}/${id}?cluster=devnet`;

@@ -75,15 +75,16 @@ async def clarify(question: str, not_found: bool = False) -> dict:
     Returns {clear: True} or {clear: False, ask, options: [{label, question}]}."""
     if not CONFIG.LLM:
         return {"clear": True}
+    where = "Wikipedia and the web" if CONFIG.WEB else "Wikipedia"
     if not_found:
-        prompt = (f'A research system searched Wikipedia for this question and found little or nothing that answers it:\n"{question}"\n\n'
-                  "Suggest 2 or 3 different questions the user could ask instead that Wikipedia articles do cover: the closest broader "
-                  "question, the official name of the event or article, or a related fact Wikipedia records. Do not just reword the "
-                  "original question; if Wikipedia would not have that detail, each suggestion must ask for something it does have. "
-                  'Set "ask" to one short sentence to the user saying what Wikipedia probably lacks, '
-                  'for example "Wikipedia does not list individual game patch dates."\n')
+        prompt = (f'A research system searched {where} for this question and found little or nothing that answers it:\n"{question}"\n\n'
+                  "Suggest 2 or 3 different questions the user could ask instead that are more likely to be answered: the closest broader "
+                  "question, the official name of the event or product, or a more specific detail (a model, a year, a place). "
+                  "Do not just reword the original question. "
+                  'Set "ask" to one short sentence to the user saying what was probably missing, '
+                  'for example "No source gave a single typical price for that."\n')
     else:
-        prompt = (f'Decide whether this research question is clear enough to answer from Wikipedia:\n"{question}"\n\n'
+        prompt = (f'Decide whether this research question is clear enough to answer from {where}:\n"{question}"\n\n'
                   "Only treat it as unclear if it could mean clearly different things that would change the answer (an ambiguous name, "
                   'an event with several editions, a missing year or place that matters). Most questions are clear: then reply {"clear": true}.\n'
                   'If it is unclear, set "ask" to one short question for the user, and give 2 or 3 options, each a complete rewritten question.\n')
@@ -250,9 +251,9 @@ class Run:
         agent, out = await self.call("planner", {"question": self.r["question"]}, "p1")
         plan = out["subquestions"][:CONFIG.SUBQUESTIONS]
         self.r["plan"] = [p["question"] for p in plan]
-        self.r["tasks"] = [{"id": f"t{i + 1}", "question": p["question"], "search": p.get("search") or p["question"],
+        self.r["tasks"] = [{"id": f"t{i + 1}", "question": p["question"], "search": p.get("search") or p["question"], "web": p.get("web") or p["question"],
                             "planned_by": agent["asset"], "planned_by_name": agent["name"]} for i, p in enumerate(plan)]
-        self.log("plan: " + " | ".join(f"{t['question']} [search: {t['search']}]" for t in self.r["tasks"]))
+        self.log("plan: " + " | ".join(f"{t['question']} [wiki: {t['search']} | web: {t['web']}]" for t in self.r["tasks"]))
         await self.save()
 
     async def step_retrieve(self):
@@ -263,15 +264,15 @@ class Run:
         for t in self.r["tasks"]:
             if "sources" in t:
                 continue
-            agent, out = await self.call("retriever", {"sub_question": t["question"], "search": t["search"], "question": self.r["question"]}, t["id"])
-            t.update(sources=out["sources"][:3], retrieved_by=agent["asset"], retrieved_by_name=agent["name"])
+            agent, out = await self.call("retriever", {"sub_question": t["question"], "search": t["search"], "web": t.get("web"), "question": self.r["question"]}, t["id"])
+            t.update(sources=out["sources"][:6], retrieved_by=agent["asset"], retrieved_by_name=agent["name"])
             await self.save()
 
     async def step_read(self):
         for t in self.r["tasks"]:
             if "facts" in t:
                 continue
-            agent, out = await self.call("reader", {"sub_question": t["question"], "search": t["search"], "sources": t["sources"]}, f"{t['id']}-read")
+            agent, out = await self.call("reader", {"sub_question": t["question"], "search": t["search"], "web": t.get("web"), "sources": t["sources"]}, f"{t['id']}-read")
             t.update(facts=out["facts"], read_by=agent["asset"], read_by_name=agent["name"])
             await self.save()
 
@@ -313,7 +314,7 @@ class Run:
         verified = [c for c in self.r["claims"] if c["status"] == "supported"]
         if not verified:
             self.r["answer"] = ("None of the claims the hired agents found could be verified against their sources, so no answer was written."
-                                if self.r["claims"] else "The hired agents found nothing on Wikipedia that answers this question, so no answer was written.")
+                                if self.r["claims"] else f"The hired agents found nothing on Wikipedia{' or the web' if CONFIG.WEB else ''} that answers this question, so no answer was written.")
             return
         allowed = {c["id"] for c in verified}
         for attempt in (1, 2):

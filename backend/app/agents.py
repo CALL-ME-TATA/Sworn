@@ -1,11 +1,13 @@
 """Our agents, good and deliberately bad. Each is a handler: input dict -> output dict.
 The orchestrator only ever reaches them over HTTP (POST /agents/{name}), exactly like third-party agents."""
 import asyncio
+from datetime import date
+from itertools import zip_longest
 
 from . import rules
 from .config import CONFIG
 from .llm import ask
-from .sources import quote_in, search_wikipedia, source_text, title_of, wiki_text, wiki_url
+from .sources import quote_in, search_web, search_wikipedia, source_text, title_of, wiki_url
 
 RULE_PAGE_CHARS = 12000  # rule mode: the start of each page (its trial pass rate was measured with this)
 LLM_PAGE_CHARS = 40000   # model mode ranks sentences from most of each page, so specific facts are reachable
@@ -13,24 +15,27 @@ SHORTLIST = 20           # facts the reasoner chooses from; about 1k tokens, wel
 
 
 async def plan_question(question: str) -> list[dict]:
-    """[{question, search}]: only the sub-questions the answer needs, each with a focused Wikipedia query."""
+    """[{question, search, web}]: only the sub-questions the answer needs, each with a focused Wikipedia query
+    and a web search query."""
     if not CONFIG.LLM:
-        return [{"question": q, "search": q} for q in rules.plan(question, CONFIG.SUBQUESTIONS)]
+        return [{"question": q, "search": q, "web": q} for q in rules.plan(question, CONFIG.SUBQUESTIONS)]
     res = await ask(
-        f"Plan research for this question using Wikipedia.\nQuestion: {question}\n\n"
+        f"Plan research for this question using Wikipedia{' and a web search engine' if CONFIG.WEB else ''}. Today is {date.today():%d %B %Y}.\n"
+        f"Question: {question}\n\n"
         f"Break it into at most {CONFIG.SUBQUESTIONS} self-contained sub-questions that are each needed for the answer. "
         "Do not add background or definition questions the user did not ask for; a simple question needs only one. "
-        "For each, write a short Wikipedia search query naming the most specific article likely to hold the answer "
-        '(for example "2026 Valorant Champions", not "who won VCT").\n'
-        'Reply with JSON only: {"subquestions":[{"question":"...","search":"..."}]}',
+        'For each, write "search": a short Wikipedia search query naming the most specific article likely to hold the answer '
+        '(for example "2026 Valorant Champions", not "who won VCT"), and "web": a web search query a person would type '
+        '(for example "32GB DDR5 SO-DIMM laptop RAM price"). Add a year to a query only if the question asks about a specific time.\n'
+        'Reply with JSON only: {"subquestions":[{"question":"...","search":"...","web":"..."}]}',
         json_mode=True,
     )
     plan = []
     for s in res.get("subquestions", []):
         if isinstance(s, str):
-            s = {"question": s, "search": s}
+            s = {"question": s}
         if isinstance(s, dict) and s.get("question"):
-            plan.append({"question": s["question"], "search": s.get("search") or s["question"]})
+            plan.append({"question": s["question"], "search": s.get("search") or s["question"], "web": s.get("web") or s["question"]})
     return plan[:CONFIG.SUBQUESTIONS]
 
 
@@ -39,18 +44,25 @@ async def planner(inp):
 
 
 async def retriever(inp):
-    """Fetches relevant sources. The planner's focused query finds the specific article, not just the general one."""
-    titles = await search_wikipedia(inp.get("search") or inp.get("sub_question", ""), 3 if CONFIG.LLM else 2)
-    return {"sources": [{"title": t, "url": wiki_url(t)} for t in titles]}
+    """Fetches relevant sources: Wikipedia articles (the planner's focused query finds the specific article) and,
+    when web search is on, web pages. Interleaved, so the reader weighs both kinds equally."""
+    sub = inp.get("sub_question", "")
+    titles, web = await asyncio.gather(
+        search_wikipedia(inp.get("search") or sub, 3 if CONFIG.LLM else 2),
+        search_web(inp.get("web") or sub, 3),
+    )
+    wiki = [{"title": t, "url": wiki_url(t)} for t in titles]
+    mixed = [s for pair in zip_longest(web, wiki) for s in pair if s]
+    return {"sources": mixed}
 
 
 async def reader(inp):
     """Reads each source and extracts the sentences that bear on the sub-question. Each fact is the page's own sentence."""
     limit = LLM_PAGE_CHARS if CONFIG.LLM else RULE_PAGE_CHARS
-    sources = [s for s in inp.get("sources", []) if isinstance(s, dict) and s.get("url")][:3]
+    sources = [s for s in inp.get("sources", []) if isinstance(s, dict) and s.get("url")][:6]
     texts = await asyncio.gather(*(source_text(s["url"]) for s in sources), return_exceptions=True)
-    pages = [{"url": s["url"], "text": t[:limit]} for s, t in zip(sources, texts) if isinstance(t, str)]
-    query = f"{inp.get('sub_question', '')} {inp.get('search') or ''}"
+    pages = [{"url": s["url"], "text": t[:limit], "loose": "wikipedia.org" not in s["url"]} for s, t in zip(sources, texts) if isinstance(t, str)]
+    query = f"{inp.get('sub_question', '')} {inp.get('search') or ''} {inp.get('web') or ''}"
     return {"facts": rules.pick_sentences(query, pages, SHORTLIST if CONFIG.LLM else 3)}
 
 
@@ -64,9 +76,10 @@ async def reasoner(inp, style: str, count: int):
     sub, question = inp.get("sub_question", ""), inp.get("question")
     res = await ask(
         (f"Overall question: {question}\n" if question and question != sub else "") + f"Sub-question: {sub}\n\n"
-        "Numbered sentences from Wikipedia:\n" + "\n".join(f"[{i}] {f['quote']}" for i, f in enumerate(facts)) + "\n\n"
+        "Numbered sentences, each with the site it comes from:\n" + "\n".join(f"[{i}] ({title_of(f['source_url'])}) {f['quote']}" for i, f in enumerate(facts)) + "\n\n"
         f"Choose up to {count} sentences that directly answer the sub-question and restate each as a short factual claim. {style}\n"
         "Each claim may only say what its sentence says. Skip sentences that are merely on the same topic. "
+        "For prices and other facts that change, keep any date or place the sentence gives. "
         "If no sentence answers the sub-question, return an empty list; that is better than an off-topic claim.\n"
         'Reply with JSON only: {"claims":[{"pick":<sentence number>,"text":"..."}]}',
         json_mode=True,
