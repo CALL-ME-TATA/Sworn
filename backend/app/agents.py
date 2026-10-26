@@ -22,8 +22,9 @@ async def plan_question(question: str) -> list[dict]:
     res = await ask(
         f"Plan research for this question using Wikipedia{' and a web search engine' if CONFIG.WEB else ''}. Today is {date.today():%d %B %Y}.\n"
         f"Question: {question}\n\n"
-        f"Break it into at most {CONFIG.SUBQUESTIONS} self-contained sub-questions that are each needed for the answer. "
-        "Do not add background or definition questions the user did not ask for; a simple question needs only one. "
+        f"Break it into 1 to {CONFIG.SUBQUESTIONS} self-contained sub-questions that together cover what a complete answer needs: "
+        "every part the user asked about, plus the key context that makes the answer useful (for example when and how, "
+        "or why it matters, if the question implies it). Do not add unrelated background or definition questions. "
         'For each, write "search": a short Wikipedia search query naming the most specific article likely to hold the answer '
         '(for example "2026 Valorant Champions", not "who won VCT"), and "web": a web search query a person would type '
         '(for example "32GB DDR5 SO-DIMM laptop RAM price"). Add a year to a query only if the question asks about a specific time.\n'
@@ -121,13 +122,18 @@ async def generator(inp):
     listing = "\n".join(f"[{c['id']}] {c['text']}" for c in claims)
     answer = await ask(
         f"Question: {question}\n\nVerified claims:\n{listing}\n\n"
-        "Write a precise answer using only these claims: at most 3 sentences and about 80 words. "
-        "The first sentence must answer the question directly (who, what, when or how), with no preamble. "
-        "Leave out any claim that does not help answer the question; you do not have to use them all. "
-        'If the claims do not contain the answer, say so plainly in one sentence (for example "The sources found do not say who won"), '
-        "then add at most one closely related fact; do not describe loosely related facts. "
-        'Put the claim ID in square brackets right after the full stop of each sentence that uses it, like "... in 1928. [c1]". '
-        "Do not add facts that are not in the claims. Reply with the answer text only."
+        "Write a complete, well-organised answer using only these claims.\n"
+        "- Start with one sentence that answers the question directly (who, what, when or how), with no preamble.\n"
+        "- Then explain in 2 to 4 paragraphs of 2 to 4 sentences each, about 150 to 300 words in all (shorter if there are only a few claims). "
+        "Never put a single sentence in a paragraph of its own, except the opening sentence. "
+        "Cover each part of the question and give the useful detail the claims hold: dates, names, numbers, causes and effects.\n"
+        "- Use every claim that helps answer the question and leave out the ones that do not. Group related claims; "
+        'where several parallel facts fit better as a list, use a short list with each item on its own line starting with "- ".\n'
+        "- Separate paragraphs with a blank line. Plain text only: no headings, no bold.\n"
+        '- If the claims do not contain the answer, say so plainly first (for example "The sources found do not say who won"), '
+        "then give what they do say that is closely related.\n"
+        '- Put the claim ID in square brackets right after the full stop of every sentence or list item that uses it, like "... in 1928. [c1]".\n'
+        "- Do not add facts that are not in the claims. Reply with the answer text only."
     )
     return {"answer": answer.strip()}
 
@@ -150,7 +156,7 @@ HANDLERS = {
     "retriever-a": retriever,
     "retriever-b": retriever,
     "reader-a": reader,
-    "reasoner-a": lambda inp: reasoner(inp, "Prefer specific numbers, dates and names.", 3),
+    "reasoner-a": lambda inp: reasoner(inp, "Prefer specific numbers, dates, names, causes and effects.", 5),
     "verifier-a": verifier,
     "generator-a": generator,
     "bad-liar": bad_liar,

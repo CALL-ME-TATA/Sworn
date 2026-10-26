@@ -84,8 +84,22 @@ export function Answer({ r }: { r: Run }) {
   if (!r.answer) return <Empty>The answer appears here once the hired team has researched and checked its claims.</Empty>;
   const byId = Object.fromEntries(r.claims.map((c) => [c.id, c]));
   const names = (list: (string | undefined)[]) => [...new Set(list.filter(Boolean))].join(", ") || "—";
-  const text = r.answer.replace(/\s*((?:\[c\d+\]\s*)+)([.,;:!?])/g, "$2 $1"); // "fact [c3]." reads as "fact. [c3]"
-  const parts = text.split(/\s*\[(c\d+)\]/g);
+  // Text with [cN] citations turned into chips; "fact [c3]." reads as "fact. [c3]".
+  const cited = (text: string) => text.replace(/\s*((?:\[c\d+\]\s*)+)([.,;:!?])/g, "$2 $1").split(/\s*\[(c\d+)\]/g).map((p, i) => {
+    if (i % 2 === 0) return p;
+    const c = byId[p];
+    const tip = c ? `“${c.quote}” · ${sourceName(c.source_url)} · reasoned by ${c.produced_by_name}, checked by ${c.verified_by_name}` : p;
+    return (
+      <a key={i} href={`#evidence/${p}`} title={tip}
+        className="mx-0.5 rounded bg-blue-bg px-1.5 py-0.5 align-[2px] font-mono text-[11px] font-medium text-blue no-underline hover:bg-ink hover:text-white">{p}</a>
+    );
+  });
+  // Paragraphs are separated by blank lines; lines starting with "- " form a list.
+  const blocks = r.answer.trim().split(/\n\s*\n/).map((block) => {
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    const items = lines.filter((l) => /^[-•*]\s+/.test(l));
+    return { lead: lines.filter((l) => !/^[-•*]\s+/.test(l)).join(" "), items: items.map((l) => l.replace(/^[-•*]\s+/, "")) };
+  });
   const credits = [
     ["Planned", r.tasks[0]?.planned_by_name], ["Retrieved", names(r.tasks.map((t) => t.retrieved_by_name))],
     ["Read", names(r.tasks.map((t) => t.read_by_name))], ["Reasoned", names(r.claims.map((c) => c.produced_by_name))],
@@ -93,17 +107,18 @@ export function Answer({ r }: { r: Run }) {
   ];
   return (
     <div className="card overflow-hidden">
-      <p className="m-0 p-6 text-[19px] leading-[1.7] text-ink sm:p-8">
-        {parts.map((p, i) => {
-          if (i % 2 === 0) return p;
-          const c = byId[p];
-          const tip = c ? `“${c.quote}” · ${sourceName(c.source_url)} · reasoned by ${c.produced_by_name}, checked by ${c.verified_by_name}` : p;
-          return (
-            <a key={i} href={`#evidence/${p}`} title={tip}
-              className="mx-0.5 rounded bg-blue-bg px-1.5 py-0.5 align-[2px] font-mono text-[11px] font-medium text-blue no-underline hover:bg-ink hover:text-white">{p}</a>
-          );
-        })}
-      </p>
+      <div className="max-w-[72ch] space-y-4 p-6 text-[17px] leading-[1.75] text-ink-2 sm:p-8">
+        {blocks.map((b, i) => (
+          <div key={i}>
+            {b.lead && <p className={`m-0 ${i === 0 ? "text-[19px] leading-[1.65] text-ink" : ""}`}>{cited(b.lead)}</p>}
+            {b.items.length > 0 && (
+              <ul className="m-0 mt-2 space-y-1.5 pl-5 marker:text-faint">
+                {b.items.map((item, j) => <li key={j}>{cited(item)}</li>)}
+              </ul>
+            )}
+          </div>
+        ))}
+      </div>
       <dl className="m-0 grid grid-cols-2 border-t border-line bg-bone/50 sm:grid-cols-3 lg:grid-cols-6">
         {credits.map(([k, v]) => (
           <div key={k} className="border-b border-line px-6 py-4 lg:border-b-0 lg:not-first:border-l">

@@ -44,7 +44,7 @@ def test_daily_limit_falls_back_then_gives_up(monkeypatch):
     llm._exhausted.clear()
 
 
-def test_per_minute_limit_is_busy_not_a_model_switch(monkeypatch):
+def test_per_minute_limit_on_every_model_is_busy(monkeypatch):
     monkeypatch.setattr(llm.CONFIG, "PROVIDER", "groq")
     llm._exhausted.clear()
 
@@ -54,5 +54,6 @@ def test_per_minute_limit_is_busy_not_a_model_switch(monkeypatch):
     monkeypatch.setattr(llm, "_complete", per_minute)
     with pytest.raises(llm.ProviderLimit) as err:
         asyncio.run(llm.ask("hi"))
-    assert err.value.retry_after == pytest.approx(4.2)
-    assert not llm._exhausted
+    assert 0 < err.value.retry_after <= 4.2  # each model rests only until its per-minute limit resets
+    assert set(llm._exhausted) == set(llm.models())
+    llm._exhausted.clear()

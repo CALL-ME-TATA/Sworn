@@ -76,7 +76,12 @@ async def _create(model: str, messages: list[dict], json_mode: bool) -> str:
         model=model,
         messages=messages,
         temperature=0.2,
-        max_completion_tokens=4096,
+        # Groq counts the reserved output against the per-minute token budget (8,000 on the free tier), so keep it modest;
+        # 2,000 still fits the reasoning plus a 300-word answer.
+        max_completion_tokens=2000,
+        # gpt-oss models reason before answering, inside the same token cap; on a long answer they can spend it all and
+        # return nothing. These are well-specified tasks, so low effort is enough and uses far fewer tokens per minute.
+        **({"reasoning_effort": "low"} if "gpt-oss" in model else {}),
         **({"response_format": {"type": "json_object"}} if json_mode else {}),
     )
     return res.choices[0].message.content or ""
@@ -90,6 +95,9 @@ async def ask(prompt: str, *, json_mode: bool = False, system: str | None = None
         try:
             for attempt in (1, 2):
                 text = await _complete(model, messages, json_mode)
+                if not text.strip():  # it ran out of tokens before answering: let the next model try
+                    print(f"{model}: empty reply, trying the next model")
+                    break
                 USED.add(model)
                 if not json_mode:
                     return text
@@ -99,15 +107,14 @@ async def ask(prompt: str, *, json_mode: bool = False, system: str | None = None
                     if attempt == 2:
                         raise ValueError(f"model did not return JSON: {err}") from err
         except RateLimitError as err:
+            # Each model has its own daily and per-minute budget: rest this one until its limit resets, use the next.
             msg = str(err)
+            daily = "per day" in msg or "(TPD)" in msg or "(RPD)" in msg
             wait = _wait_seconds(msg)
-            if "per day" in msg or "(TPD)" in msg or "(RPD)" in msg:
-                _exhausted[model] = time.monotonic() + (wait or 600)
-                print(f"{model}: daily limit reached, trying the next model")
-                continue
-            raise ProviderLimit(f"the AI provider is busy (per-minute limit on {model})", wait) from err
+            _exhausted[model] = time.monotonic() + (wait or (600 if daily else 20))
+            print(f"{model}: {'daily' if daily else 'per-minute'} limit reached, trying the next model")
     back = min((t for t in _exhausted.values()), default=None)
-    raise ProviderLimit("every AI model we use has reached its daily limit", back and back - time.monotonic())
+    raise ProviderLimit("every AI model we use is at its rate limit", back and back - time.monotonic())
 
 
 def parse_json(text: str):

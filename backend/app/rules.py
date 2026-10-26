@@ -92,4 +92,6 @@ def supports(claim: str, quote: str) -> dict:
 
 
 def write(claims: list[dict]) -> str:
-    return " ".join(f"{re.sub(r'[.!?]+$', '', c['text'].strip())}. [{c['id']}]" for c in claims[:6])
+    """Every verified claim, cited; a new paragraph every three claims so it reads as an answer, not a list."""
+    sentences = [f"{re.sub(r'[.!?]+$', '', c['text'].strip())}. [{c['id']}]" for c in claims[:12]]
+    return "\n\n".join(" ".join(sentences[i:i + 3]) for i in range(0, len(sentences), 3))
