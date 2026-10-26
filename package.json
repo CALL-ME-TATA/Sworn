@@ -1,0 +1,22 @@
+{
+  "name": "trusted-agent-hiring",
+  "version": "0.1.0",
+  "description": "Orchestrator that hires research agents from the Solana Agent Registry and trusts only those that pass its checks",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "keygen": "node scripts/keygen.js",
+    "register": "node scripts/register.js",
+    "agents": "node src/agents.js",
+    "run": "node src/orchestrator.js",
+    "baseline": "node src/baseline.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.2.0",
+    "@solana/web3.js": "^1.99.0",
+    "8004-solana": "^0.8.5",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0"
+  }
+}
