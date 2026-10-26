@@ -66,7 +66,34 @@ export function progress(r: Run): number {
   return 8;
 }
 
-export const deadSet = (r: Run) => new Set([...(r.dead ?? []), ...r.failovers.map((f) => f.from)]);
+/** How much of the run is done, 0 to 100, and what it is doing now. Each step is weighted by roughly how long it
+ * takes; steps made of many small jobs (screening candidates, checking claims) also count progress within the step. */
+export function percent(r: Run): { pct: number; doing: string } {
+  const frac = (done: number, all: number) => (all ? done / all : 0);
+  const screened = r.hiring.filter((h) => h.result !== "checking").length;
+  const tasks = r.tasks.length;
+  const checked = r.claims.filter((c) => c.status !== "pending").length;
+  const parts: [number, number, string][] = [ // [weight, fraction done, what it is doing]
+    [25, ROLES.every((role) => r.team?.[role]) ? 1 : frac(screened, r.hiring.length), `Screening candidates · ${screened} of ${r.hiring.length || "…"} checked`],
+    [5, r.plan.length ? 1 : 0, "Planning the question"],
+    [10, frac(r.tasks.filter((t) => t.sources).length, tasks), "Finding sources"],
+    [10, frac(r.tasks.filter((t) => t.facts).length, tasks), "Reading the sources"],
+    [15, frac(r.tasks.filter((t) => t.reasoned_by).length, tasks), "Stating claims"],
+    [20, r.answer || (tasks && r.tasks.every((t) => t.reasoned_by) && checked === r.claims.length) ? 1 : frac(checked, r.claims.length), `Verifying claims · ${checked} of ${r.claims.length} checked`],
+    [10, r.answer ? 1 : 0, "Writing the answer"],
+    [5, r.finished_at ? 1 : 0, "Writing scores on-chain"],
+  ];
+  let pct = 0;
+  let doing = "Done";
+  for (const [weight, done, what] of parts) {
+    pct += weight * Math.min(1, done);
+    if (done < 1 && doing === "Done") doing = what;
+  }
+  if (r.finished_at) return { pct: r.error ? Math.round(pct) : 100, doing: r.error ? "Stopped" : "Done" };
+  return { pct: Math.min(99, Math.round(pct)), doing };
+}
+
+export const deadSet =(r: Run) => new Set([...(r.dead ?? []), ...r.failovers.map((f) => f.from)]);
 /** "Penicillin" for a Wikipedia article, the site name ("tomshardware.com") for any other page. */
 export function sourceName(url?: string) {
   if (!url) return "source";

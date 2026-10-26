@@ -23,7 +23,8 @@ running: asyncio.Task | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await store.connect()
-    await store.redis.delete("agents:killed")  # a crashed demo run must not leave an agent switched off
+    # A run cut off by a restart must not leave an agent switched off, or block new runs until its lock expires.
+    await store.redis.delete("agents:killed", "run:lock")
     await seed_cache()
 
     async def preload():  # read the whole registry once, so the first run does not wait on ~20 indexer pages
