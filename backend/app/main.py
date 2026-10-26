@@ -11,6 +11,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from . import store
 from .agents import HANDLERS
+from .llm import ProviderLimit
 from .config import AGENT_LIST, CONFIG, DATA
 from .orchestrator import clarify, run
 from .registry import list_agents, registration_file
@@ -74,6 +75,9 @@ async def agent_task(name: str, request: Request):
     task_id = body.get("task_id")
     try:
         return {"task_id": task_id, "output": await HANDLERS[name](body.get("input") or {})}
+    except ProviderLimit as err:  # our AI provider is out of quota: "busy", not a broken agent
+        return JSONResponse({"task_id": task_id, "error": str(err), "reason": "provider-limit", "retry_after": err.retry_after},
+                            status_code=429, headers={"Retry-After": str(int(err.retry_after or 60))})
     except Exception as err:  # noqa: BLE001
         print(f"{name} {task_id}: {err}")
         return JSONResponse({"task_id": task_id, "error": str(err)}, status_code=500)

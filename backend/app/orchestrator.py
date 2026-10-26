@@ -14,7 +14,7 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
-from . import metrics, store
+from . import llm, metrics, store
 from .config import CONFIG, ROLES
 from .llm import ask
 from .registry import discover, get_score, give_feedback, is_alive, registry_stats
@@ -30,6 +30,13 @@ class AgentError(Exception):
     def __init__(self, message: str, hard: bool):
         super().__init__(message)
         self.hard = hard
+
+
+class AgentBusy(Exception):
+    """The agent answered 429: its AI provider (or the agent itself) is rate-limited. Not a fault, so never scored."""
+
+
+BUSY = "AI provider limit reached"
 
 
 class AgentDown(Exception):
@@ -57,6 +64,12 @@ async def post(endpoint: str, body: dict, timeout: float) -> dict:
         raise AgentError("timeout", True) from None
     except httpx.HTTPError:
         raise AgentError("unreachable", True) from None
+    if res.status_code == 429:
+        try:
+            detail = res.json().get("error") or "rate limited"
+        except Exception:  # noqa: BLE001
+            detail = "rate limited"
+        raise AgentBusy(detail)
     if res.status_code >= 500 or res.status_code == 404:
         raise AgentError(f"HTTP {res.status_code}", True)
     if res.status_code >= 400:
@@ -176,6 +189,10 @@ class Run:
             grade = await trial.grade(outs)
             if not grade["pass"]:
                 return reject("trial", grade["reason"], "trial-failed")
+        except AgentBusy as err:
+            entry.update(result="busy", reason=f"{BUSY}: {err}")
+            metrics.SCREENED.labels(role, "busy", "trial").inc()
+            return None
         except AgentError as err:
             return reject("trial", str(err), "timeout" if str(err) == "timeout" else "trial-failed")
         entry.update(stage="hired", result="passed")
@@ -212,6 +229,10 @@ class Run:
                 out = await post(agent["endpoint"], {"run_id": self.r["run_id"], "task_id": task_id, "role": role, "input": inp}, CONFIG.TASK_TIMEOUT)
                 if not SHAPES[role](out):
                     raise AgentError("wrong reply shape", False)
+            except AgentBusy as err:
+                call.update(ms=int((time.monotonic() - started) * 1000), error="busy")
+                metrics.CALLS.labels(role, "busy").inc()
+                raise RuntimeError(f"{BUSY} during the {role} step ({err}); the run stopped and no agent was scored for it") from None
             except AgentError as err:
                 call.update(ms=int((time.monotonic() - started) * 1000), error=str(err))
                 s["fail"] += 1
@@ -259,6 +280,9 @@ class Run:
                 self.log(f"{role}: hired {team[0]['name']}, backups: {', '.join(a['name'] for a in team[1:]) or 'none'}")
         await self.save()
         missing = [role for role in ROLES if not self.team[role]]
+        busy = [role for role in missing if any(h["role"] == role and h["result"] == "busy" for h in self.r["hiring"])]
+        if busy:
+            raise RuntimeError(f"{BUSY} while testing the {busy[0]} candidates; no agent was scored for it")
         if missing:
             raise RuntimeError(f"no trustworthy {missing[0]} found")
 
@@ -349,6 +373,7 @@ class Run:
     async def step_record(self):
         if self.killed:
             await store.redis.srem("agents:killed", self.killed)
+        items = []
         for (asset, role), s in self.stats.items():
             total = s["ok"] + s["fail"]
             score = s["ok"] / total if total else 0
@@ -361,17 +386,29 @@ class Run:
                 item["error"] = "not registered on-chain"
             elif s["registry"] == "sati" and not CONFIG.SATI_FEEDBACK:
                 item["error"] = "SATI feedback is off (set SATI_FEEDBACK=on)"
-            elif self.feedback:
+            items.append((item, s))
+        self.r["feedback"] = [item for item, _ in items]
+
+        # One Solana transaction per agent. On the public devnet RPC, sending them concurrently triggered its rate limit
+        # (2 at a time: 25 s for 7 writes; 4: some failed) versus about 18 s one after another, so the default is 1.
+        # With a private RPC, raise FEEDBACK_CONCURRENCY. Writes for the same agent always stay in order.
+        gate = asyncio.Semaphore(CONFIG.FEEDBACK_CONCURRENCY)
+        per_asset: dict[str, asyncio.Lock] = {}
+
+        async def write(item, s):
+            async with gate, per_asset.setdefault(item["asset"], asyncio.Lock()):
                 try:
-                    item["tx"] = await give_feedback(asset, score=score, role=role, outcome=outcome, endpoint=s["endpoint"],
-                                                     report_url=self.report_url, registry=s["registry"])
+                    item["tx"] = await give_feedback(item["asset"], score=item["score"], role=item["role"], outcome=item["outcome"],
+                                                     endpoint=s["endpoint"], report_url=self.report_url, registry=s["registry"])
                     metrics.FEEDBACK.labels(s["registry"], "ok").inc()
-                    self.log(f"feedback {s['name']}: {score} ({outcome})")
+                    self.log(f"feedback {s['name']}: {item['score']} ({item['outcome']})")
                 except Exception as err:  # noqa: BLE001
-                    item["error"] = str(err)
+                    item["error"] = str(err) or type(err).__name__  # a timeout's message is empty
                     metrics.FEEDBACK.labels(s["registry"], "fail").inc()
                     self.log(f"feedback {s['name']} failed: {err}")
-            self.r["feedback"].append(item)
+
+        if self.feedback:
+            await asyncio.gather(*(write(item, s) for item, s in items if "error" not in item))
 
         r = self.r
         bad = [h for h in r["hiring"] if h["ours"] and h.get("id", "").startswith("bad-")]
@@ -444,8 +481,12 @@ class Run:
 
     async def run(self) -> dict:
         started = time.monotonic()
+        llm.USED.clear()
         await self.save()  # the page shows the question at once
         await self.graph().ainvoke({}, {"recursion_limit": 80})
+        if CONFIG.LLM and llm.USED:
+            self.r["mode"] = f"{CONFIG.PROVIDER} · {', '.join(sorted(llm.USED))}"
+            await self.save()
         metrics.RUNS.labels("stopped" if self.r.get("error") else "answered").inc()
         metrics.RUN_SECONDS.observe(time.monotonic() - started)
         return self.r

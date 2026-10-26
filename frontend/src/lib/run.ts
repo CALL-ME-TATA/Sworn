@@ -6,7 +6,7 @@ export const ROUNDS = ["reputation", "alive", "trial"] as const;
 
 export type Hiring = {
   asset: string; name: string; role: Role; ours: boolean; registry: "8004" | "sati";
-  stage: "reputation" | "alive" | "trial" | "hired"; result: "checking" | "passed" | "failed";
+  stage: "reputation" | "alive" | "trial" | "hired"; result: "checking" | "passed" | "failed" | "busy"; // busy: our AI provider was out of quota, not scored
   reason: string | null; score: number | null; ratings: number;
 };
 export type Member = { asset: string; name: string };

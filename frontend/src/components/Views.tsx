@@ -65,6 +65,7 @@ export function Steps({ r }: { r: Run }) {
 /* ---------- answer ---------- */
 
 function stoppedHelp(err: string) {
+  if (/AI provider limit/.test(err)) return "This is a limit on our side, not a fault in any agent, so nobody was scored for it. The free AI tier has per-minute and per-day token limits; Sworn already switches to a backup model when one runs out. Wait a few minutes and run again.";
   if (/no working/.test(err)) return "Every hired agent for that role failed during the run, so nobody was left to do the work. The usual cause is the AI provider's per-minute limit. Wait a minute and run again; the Hiring tab shows which agent failed and why.";
   if (/no trustworthy/.test(err)) return "No candidate passed all three checks for that role. The Hiring tab shows why each was turned away. Trials are drawn at random, so try again.";
   return "The Hiring tab shows which agent failed and why. Wait a minute and run again.";
@@ -236,6 +237,7 @@ function Round({ h, round }: { h: Hiring; round: (typeof ROUNDS)[number] }) {
   }
   if (i > at) return <span className="text-faint">—</span>;
   if (h.result === "failed") return <span className="tag tag-red" title={h.reason ?? ""}><Icon name="x" size={10} />out</span>;
+  if (h.result === "busy") return <span className="tag tag-yellow" title={h.reason ?? ""}>busy</span>;
   return <span className="tag tag-yellow"><span className="pulse size-1.5 rounded-full bg-yellow" />checking</span>;
 }
 
@@ -271,6 +273,7 @@ export function HiringView({ r }: { r: Run }) {
                     : pos === 0 ? <span className="tag bg-ink text-white">hired</span>
                     : pos > 0 ? <span className="tag tag-gray">backup {pos}</span>
                     : h.result === "failed" ? <span className="text-[13px] text-red">{h.reason}</span>
+                    : h.result === "busy" ? <span className="text-[13px] text-yellow">AI provider busy · not scored</span>
                     : <span className="text-faint">—</span>;
                 };
                 return (
