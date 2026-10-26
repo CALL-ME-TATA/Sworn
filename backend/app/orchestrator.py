@@ -115,6 +115,7 @@ class Run:
             "mode": f"{CONFIG.PROVIDER} · {CONFIG.MODEL}" if CONFIG.LLM else "rule-based",
             "registry": None, "plan": [], "tasks": [], "hiring": [], "team": {}, "claims": [], "answer": None,
             "failovers": [], "dead": [], "feedback": [], "metrics": {},
+            "timings": {}, "calls": [], "kill": None, "round_trip_ms": None,
         }
         self.feedback, self.kill, self.log, self.latest = feedback, kill, log, latest
         self.report_url = f"{CONFIG.AGENTS_BASE_URL}/api/runs/{run_id}"
@@ -124,6 +125,11 @@ class Run:
         self.pending_failover = None
         self.killed = None  # the agent the kill demo took offline; always revived before the run ends
         self._save_lock = asyncio.Lock()
+        self.t0 = time.monotonic()
+
+    def ms(self, t: float | None = None) -> int:
+        """Milliseconds since the run started (or at monotonic time t)."""
+        return int(((t if t is not None else time.monotonic()) - self.t0) * 1000)
 
     async def save(self):
         async with self._save_lock:
@@ -200,11 +206,14 @@ class Run:
                 raise RuntimeError(f"no working {role} left")
             s = self.touch(agent, role)
             started = time.monotonic()
+            call = {"role": role, "agent": agent["name"], "task_id": task_id, "at_ms": self.ms(started), "ms": None, "ok": False}
+            self.r["calls"].append(call)
             try:
                 out = await post(agent["endpoint"], {"run_id": self.r["run_id"], "task_id": task_id, "role": role, "input": inp}, CONFIG.TASK_TIMEOUT)
                 if not SHAPES[role](out):
                     raise AgentError("wrong reply shape", False)
             except AgentError as err:
+                call.update(ms=int((time.monotonic() - started) * 1000), error=str(err))
                 s["fail"] += 1
                 s["streak"] += 1
                 metrics.CALLS.labels(role, "fail").inc()
@@ -212,20 +221,28 @@ class Run:
                     self.dead.add(agent["asset"])
                     self.r["dead"] = list(self.dead)
                     s["outcome"] = "timeout" if str(err) == "timeout" else "dead"
+                    failed = time.monotonic()
                     self.pending_failover = self.pending_failover or {
                         "role": role, "from": agent["asset"], "from_name": agent["name"], "task_id": task_id,
-                        "reason": str(err), "since": time.monotonic()}
+                        "reason": str(err), "since": failed, "failed_at_ms": self.ms(failed),
+                        "fail_ms": int((failed - started) * 1000)}  # how long the dead agent's call took to fail
                     self.log(f"  {agent['name']} failed ({err}), marked dead")
                     await self.save()
                     raise AgentDown(role) from None
                 continue
+            done = time.monotonic()
+            call.update(ms=int((done - started) * 1000), ok=True)
             s["ok"] += 1
             s["streak"] = 0
             metrics.CALLS.labels(role, "ok").inc()
             if self.pending_failover and self.pending_failover["role"] == role:
                 f = self.pending_failover
-                took = int((time.monotonic() - f["since"]) * 1000)
-                self.r["failovers"].append({k: v for k, v in f.items() if k != "since"} | {"to": agent["asset"], "to_name": agent["name"], "took_ms": took})
+                took = int((done - f["since"]) * 1000)
+                self.r["failovers"].append({k: v for k, v in f.items() if k != "since"} | {
+                    "to": agent["asset"], "to_name": agent["name"], "took_ms": took,
+                    "switch_ms": int((started - f["since"]) * 1000),  # from the failure to the backup being called
+                    "backup_ms": int((done - started) * 1000),        # the backup's own round trip for the task
+                    "recovered_at_ms": self.ms(done)})
                 metrics.FAILOVERS.labels(role).inc()
                 self.log(f"  {agent['name']} took over {f['task_id']} after {took} ms")
                 self.pending_failover = None
@@ -260,6 +277,7 @@ class Run:
         if self.kill and not self.killed:  # demo: take the main retriever offline mid-run, so a backup has to take over
             self.killed = self.team["retriever"][0].get("id")  # the URL id the agent server checks
             await store.redis.sadd("agents:killed", self.killed)
+            self.r["kill"] = {"agent": self.team["retriever"][0]["name"], "at_ms": self.ms()}
             self.log(f"  [demo] killed {self.team['retriever'][0]['name']}")
         for t in self.r["tasks"]:
             if "sources" in t:
@@ -370,6 +388,8 @@ class Run:
             "feedback_written": f"{sum(1 for f in r['feedback'] if f.get('tx'))}/{len(r['feedback'])}",
         }
         r["finished_at"] = now()
+        r["round_trip_ms"] = self.ms()
+        r["timings"]["record"] = int((time.monotonic() - getattr(self, "record_started", time.monotonic())) * 1000)
         await self.save()
         await store.save_records(r)
 
@@ -381,6 +401,7 @@ class Run:
 
         def node(name, fn):
             async def run_step(state: State) -> State:
+                started = time.monotonic()
                 try:
                     await fn()
                     return {"failure": None, "resume": None}
@@ -388,6 +409,8 @@ class Run:
                     return {"failure": down.role, "resume": name}
                 except Exception as err:  # noqa: BLE001 - anything that stops the run still falls through to feedback
                     return {"error": str(err)}
+                finally:  # a step re-entered after a replacement adds to its time
+                    self.r["timings"][name] = self.r["timings"].get(name, 0) + int((time.monotonic() - started) * 1000)
             return run_step
 
         for i, (name, fn) in enumerate(work):
@@ -406,6 +429,7 @@ class Run:
         g.add_conditional_edges("replace", lambda s: "record" if s.get("error") else s["resume"], [n for n, _ in work] + ["record"])
 
         async def record(state: State) -> State:
+            self.record_started = time.monotonic()
             if state.get("error"):
                 self.r["error"] = state["error"]
                 self.r["answer"] = f"Run stopped: {state['error']}."

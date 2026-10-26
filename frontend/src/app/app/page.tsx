@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Wordmark, Icon } from "@/components/ui";
-import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, Record, Registries, Scoreline, Steps } from "@/components/Views";
+import { FailoverRecord, Timing } from "@/components/Timing";
+import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, Percent, Record, Registries, Scoreline, Steps } from "@/components/Views";
 import { askClarify, getJson, postJson, seconds, type Clarify, type Compare, type Run } from "@/lib/run";
 
 const EXAMPLES = [
@@ -48,7 +49,8 @@ export default function App() {
     setLoaded(true);
     if (r && waitingFor && r.run_id !== waitingFor) setWaitingFor(null);
     if (r) setRun(r);
-    return { busy: Boolean(status?.running) || Boolean(waitingFor) || Boolean(r && !r.finished_at) };
+    // No report (backend restarting, or no runs yet) also keeps polling, so the page recovers on its own.
+    return { busy: Boolean(status?.running) || Boolean(waitingFor) || !r || !r.finished_at };
   }, [viewing, waitingFor]);
 
   useEffect(() => {
@@ -98,6 +100,7 @@ export default function App() {
     { id: "evidence", label: "Evidence", count: r.claims.length || null },
     { id: "hiring", label: "Hiring", count: r.hiring.length || null },
     { id: "record", label: "On-chain", count: r.feedback.filter((f) => f.tx).length || null },
+    { id: "timing", label: "Timing", count: r.calls?.length || null },
     { id: "registries", label: "Registries" },
     { id: "baseline", label: "Compare" },
     { id: "history", label: "History" },
@@ -179,6 +182,7 @@ export default function App() {
               {viewing && <button type="button" onClick={() => setViewing(null)} className="underline underline-offset-4 hover:text-ink">back to latest run</button>}
             </div>
             <h1 className="serif mt-0 mb-8 text-[clamp(30px,4.4vw,46px)] [text-wrap:balance]">{r.question}</h1>
+            <Percent r={r} />
             <Steps r={r} />
 
             <nav className="sticky top-14 z-20 -mx-5 mt-10 mb-8 overflow-x-auto border-b border-line bg-canvas/90 px-5 backdrop-blur-md [scrollbar-width:none] sm:-mx-8 sm:px-8" aria-label="Views">
@@ -196,12 +200,14 @@ export default function App() {
               {tab === "answer" && (
                 <>
                   <Answer r={r} />
+                  <FailoverRecord r={r} />
                   {done && !r.error && <><Scoreline r={r} /><FollowUp key={r.run_id} r={r} onRun={startRun} /></>}
                 </>
               )}
               {tab === "evidence" && <Evidence r={r} target={claimTarget} />}
               {tab === "hiring" && <HiringView r={r} />}
               {tab === "record" && <Record r={r} />}
+              {tab === "timing" && <Timing r={r} />}
               {tab === "registries" && <Registries r={r} />}
               {tab === "baseline" && <Baseline compare={compare} />}
               {tab === "history" && <History current={r.run_id} onPick={(id) => { setViewing(id); location.hash = "answer"; }} />}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  askClarify, citedIds, deadSet, explorer, getJson, progress, ROLES, ROUNDS, seconds, sourceName, STEPS,
+  askClarify, citedIds, deadSet, explorer, getJson, percent, progress, ROLES, roundTrip, ROUNDS, seconds, secs, sourceName, STEPS,
   type Clarify, type Compare, type Hiring, type Run, type RunSummary,
 } from "@/lib/run";
 import { Asset, Empty, Origin, Rating, Title, verdictTag } from "./bits";
@@ -8,10 +8,46 @@ import { Icon } from "./ui";
 
 /* ---------- progress ---------- */
 
+/** Round-trip stopwatch: counts up live while the run is going, then shows the recorded total. */
+function useNow(live: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!live) return;
+    const id = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, [live]);
+  return now;
+}
+
+export function Percent({ r }: { r: Run }) {
+  const { pct, doing } = percent(r);
+  const now = useNow(!r.finished_at);
+  const color = r.error ? "bg-red" : r.finished_at ? "bg-green" : "bg-ink";
+  return (
+    <div className="mb-6">
+      <div className="mb-2 flex items-end justify-between gap-4">
+        <span className="flex items-center gap-2 text-sm text-muted">
+          {!r.finished_at && <span className="pulse size-1.5 rounded-full bg-blue" />}{doing}
+        </span>
+        <span className="flex items-baseline gap-5">
+          <span className="text-right" title="Round trip: from asking the question to the last score written on-chain">
+            <span className="eyebrow block">{r.finished_at ? "Round trip" : "Elapsed"}</span>
+            <span className="font-mono text-lg text-ink">{secs(roundTrip(r, now))}</span>
+          </span>
+          <span className={`serif text-3xl ${r.error ? "text-red" : "text-ink"}`}>{pct}<span className="text-lg text-muted">%</span></span>
+        </span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label="Run progress">
+        <div className={`h-full rounded-full ${color} transition-[width] duration-700 ease-out`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
 export function Steps({ r }: { r: Run }) {
   const at = progress(r);
   return (
-    <ol className="m-0 grid list-none grid-cols-4 gap-x-2 gap-y-4 p-0 sm:grid-cols-8" aria-label="Run progress">
+    <ol className="m-0 grid list-none grid-cols-4 gap-x-2 gap-y-4 p-0 sm:grid-cols-8" aria-label="Run steps">
       {STEPS.map(([name, what], i) => {
         const state = i < at ? "done" : i === at ? (r.error ? "stop" : "now") : "todo";
         return (

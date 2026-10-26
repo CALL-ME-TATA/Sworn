@@ -20,7 +20,12 @@ export type Claim = {
   retrieved_by_name?: string; read_by_name?: string; produced_by: string; produced_by_name: string;
   verified_by?: string; verified_by_name?: string; status: "pending" | "supported" | "unsupported" | "unreachable"; reason?: string | null;
 };
-export type Failover = { role: Role; from: string; from_name: string; to: string; to_name: string; task_id: string; reason: string; took_ms: number };
+export type Failover = {
+  role: Role; from: string; from_name: string; to: string; to_name: string; task_id: string; reason: string; took_ms: number;
+  // recorded since the timing update; older runs lack them
+  failed_at_ms?: number; fail_ms?: number; switch_ms?: number; backup_ms?: number; recovered_at_ms?: number;
+};
+export type Call = { role: Role; agent: string; task_id: string; at_ms: number; ms: number | null; ok: boolean; error?: string };
 export type Feedback = { asset: string; name: string; role: Role; ours: boolean; registry: string; score: number; outcome: string; tx?: string; error?: string };
 export type RegistryStats = {
   total: number; with_profile: number; with_endpoint: number; with_skills: number;
@@ -30,6 +35,7 @@ export type Run = {
   run_id: string; question: string; started_at: string; finished_at?: string; mode: string; error?: string;
   registry: RegistryStats | null; plan: string[]; tasks: Task[]; hiring: Hiring[]; team: Partial<Record<Role, Member[]>>;
   claims: Claim[]; answer: string | null; written_by_name?: string; failovers: Failover[]; dead: string[]; feedback: Feedback[];
+  timings?: Partial<Record<string, number>>; calls?: Call[]; kill?: { agent: string; at_ms: number } | null; round_trip_ms?: number | null;
   metrics: Partial<{
     claims: number; claims_tagged_pct: number; claims_supported: number; bad_agents_rejected: string;
     third_party_tried: number; third_party_passed: number; failovers: number; failover_ms: number | null; feedback_written: string;
@@ -65,6 +71,45 @@ export function progress(r: Run): number {
   if (!r.finished_at) return 7;
   return 8;
 }
+
+/** How much of the run is done, 0 to 100, and what it is doing now. Each step is weighted by roughly how long it
+ * takes; steps made of many small jobs (screening candidates, checking claims) also count progress within the step. */
+export function percent(r: Run): { pct: number; doing: string } {
+  const frac = (done: number, all: number) => (all ? done / all : 0);
+  const screened = r.hiring.filter((h) => h.result !== "checking").length;
+  const tasks = r.tasks.length;
+  const checked = r.claims.filter((c) => c.status !== "pending").length;
+  const parts: [number, number, string][] = [ // [weight, fraction done, what it is doing]
+    [25, ROLES.every((role) => r.team?.[role]) ? 1 : frac(screened, r.hiring.length), `Screening candidates · ${screened} of ${r.hiring.length || "…"} checked`],
+    [5, r.plan.length ? 1 : 0, "Planning the question"],
+    [10, frac(r.tasks.filter((t) => t.sources).length, tasks), "Finding sources"],
+    [10, frac(r.tasks.filter((t) => t.facts).length, tasks), "Reading the sources"],
+    [15, frac(r.tasks.filter((t) => t.reasoned_by).length, tasks), "Stating claims"],
+    [20, r.answer || (tasks && r.tasks.every((t) => t.reasoned_by) && checked === r.claims.length) ? 1 : frac(checked, r.claims.length), `Verifying claims · ${checked} of ${r.claims.length} checked`],
+    [10, r.answer ? 1 : 0, "Writing the answer"],
+    [5, r.finished_at ? 1 : 0, "Writing scores on-chain"],
+  ];
+  let pct = 0;
+  let doing = "Done";
+  for (const [weight, done, what] of parts) {
+    pct += weight * Math.min(1, done);
+    if (done < 1 && doing === "Done") doing = what;
+  }
+  if (r.finished_at) return { pct: r.error ? Math.round(pct) : 100, doing: r.error ? "Stopped" : "Done" };
+  return { pct: Math.min(99, Math.round(pct)), doing };
+}
+
+/** 1234 -> "1.23 s", 65400 -> "1 min 05 s" */
+export function secs(ms: number | null | undefined) {
+  if (ms == null) return "—";
+  if (ms < 60000) return `${(ms / 1000).toFixed(ms < 10000 ? 2 : 1)} s`;
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`;
+}
+
+/** Total time from asking to the finished record; live runs count up from started_at. */
+export const roundTrip = (r: Run, now = Date.now()) =>
+  r.round_trip_ms ?? (r.finished_at ? Date.parse(r.finished_at) - Date.parse(r.started_at) : now - Date.parse(r.started_at));
 
 export const deadSet = (r: Run) => new Set([...(r.dead ?? []), ...r.failovers.map((f) => f.from)]);
 /** "Penicillin" for a Wikipedia article, the site name ("tomshardware.com") for any other page. */
