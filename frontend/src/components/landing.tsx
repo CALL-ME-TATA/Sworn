@@ -210,8 +210,9 @@ function Box({ x, y, w, h, title, sub, dark = false }: { x: number; y: number; w
 export function Architecture() {
   const line = { stroke: "#b9b8b4", strokeWidth: 1.4, fill: "none", markerEnd: "url(#ah)" } as const;
   const bus = 615; // every outside service hangs off one vertical line from the backend
+  const mid = (b: { y: number; h?: number }) => b.y + (b.h ?? 66) / 2;
   const right = [
-    { y: 30, title: "Registry bridge", sub: "Node · 8004-solana SDK · :3002", w: 150 },
+    { y: 22, h: 80, title: "Registry bridge", sub: "Node · :3002\n8004-solana SDK", w: 150 },
     { y: 112, title: "Groq LLM", sub: "openai/gpt-oss-120b", w: 300 },
     { y: 194, title: "Wikipedia", sub: "REST API · settled facts", w: 300 },
     { y: 276, title: "Tavily", sub: "web search · prices, dates, news", w: 300 },
@@ -232,15 +233,15 @@ export function Architecture() {
         <text x="190" y="211" fontSize="11" className="mono" fill="#a5a4a0">/api</text>
         <path d="M415 166v26" {...line} />
         <path d="M338 286v46M492 286v46" {...line} />
-        <path d={`M580 220H${bus}M${bus} ${right[0].y + 33}V${right[4].y + 33}`} stroke="#b9b8b4" strokeWidth="1.4" fill="none" />
+        <path d={`M580 220H${bus}M${bus} ${mid(right[0])}V${mid(right[4])}`} stroke="#b9b8b4" strokeWidth="1.4" fill="none" />
         {right.map((b) => (
           <g key={b.title}>
-            <Box x={650} y={b.y} w={b.w} h={66} title={b.title} sub={b.sub} />
-            <path d={b.inbound ? `M648 ${b.y + 33}H${bus + 4}` : `M${bus} ${b.y + 33}H648`} {...line} />
+            <Box x={650} y={b.y} w={b.w} h={b.h ?? 66} title={b.title} sub={b.sub} />
+            <path d={b.inbound ? `M648 ${mid(b)}H${bus + 4}` : `M${bus} ${mid(b)}H648`} {...line} />
           </g>
         ))}
         <Box x={820} y={20} w={130} h={86} title="Solana devnet" sub={"8004 registry\nSATI registry"} dark />
-        <path d="M800 63h18" {...line} />
+        <path d={`M800 ${mid(right[0])}h18`} {...line} />
       </svg>
     </div>
   );
