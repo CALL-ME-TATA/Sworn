@@ -42,6 +42,19 @@ create table if not exists feedback (
   error text,
   primary key (run_id, asset, role)
 );
+create table if not exists benchmarks (
+  id serial primary key,
+  asset text not null,
+  name text,
+  role text not null,
+  version text not null,
+  day date not null,
+  score real not null,
+  report jsonb not null,
+  tx text,
+  created_at timestamptz not null default now()
+);
+create index if not exists benchmarks_lookup on benchmarks (asset, role, version, day);
 create table if not exists comparisons (
   id serial primary key,
   created_at timestamptz not null default now(),
@@ -120,6 +133,37 @@ async def list_runs(limit: int = 20) -> list[dict]:
 async def validations(run_id: str) -> list[dict]:
     rows = await pool.fetch("select * from validation_records where run_id = $1 order by claim_id", run_id)
     return [{**dict(x), "created_at": x["created_at"].isoformat()} for x in rows]
+
+
+async def todays_benchmark(asset: str, role: str, version: str, day) -> dict | None:
+    row = await pool.fetchrow("""select id, tx, report from benchmarks where asset = $1 and role = $2 and version = $3 and day = $4
+                                 order by id desc limit 1""", asset, role, version, day)
+    return {**json.loads(row["report"]), "id": row["id"], "tx": row["tx"]} if row else None
+
+
+async def save_benchmark(asset: str, name: str, role: str, version: str, day, report: dict) -> int:
+    return await pool.fetchval("""insert into benchmarks (asset, name, role, version, day, score, report)
+                                  values ($1, $2, $3, $4, $5, $6, $7::jsonb) returning id""",
+                               asset, name, role, version, day, report["score"], json.dumps(report))
+
+
+async def set_benchmark_tx(bench_id: int, tx: str):
+    await pool.execute("update benchmarks set tx = $2 where id = $1", bench_id, tx)
+
+
+async def get_benchmark(bench_id: int) -> dict | None:
+    row = await pool.fetchrow("select * from benchmarks where id = $1", bench_id)
+    if not row:
+        return None
+    return {**dict(row), "day": row["day"].isoformat(), "created_at": row["created_at"].isoformat(), "report": json.loads(row["report"])}
+
+
+async def list_benchmarks(limit: int = 100) -> list[dict]:
+    rows = await pool.fetch("""select distinct on (asset, role) id, asset, name, role, version, day, score, tx, created_at,
+                                      report->'aspects' as aspects
+                               from benchmarks order by asset, role, id desc""")
+    out = [{**dict(r), "day": r["day"].isoformat(), "created_at": r["created_at"].isoformat(), "aspects": json.loads(r["aspects"])} for r in rows]
+    return sorted(out, key=lambda r: (r["role"], -r["score"]))[:limit]
 
 
 async def save_comparison(data: dict):

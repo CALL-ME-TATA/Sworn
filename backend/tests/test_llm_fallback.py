@@ -57,3 +57,22 @@ def test_per_minute_limit_on_every_model_is_busy(monkeypatch):
     assert 0 < err.value.retry_after <= 4.2  # each model rests only until its per-minute limit resets
     assert set(llm._exhausted) == set(llm.models())
     llm._exhausted.clear()
+
+
+def test_tool_call_quirk_moves_to_the_next_model(monkeypatch):
+    from openai import BadRequestError
+    monkeypatch.setattr(llm.CONFIG, "PROVIDER", "groq")
+    monkeypatch.setattr(llm.CONFIG, "MODEL", "openai/gpt-oss-120b")
+    llm._exhausted.clear()
+    tried = []
+
+    async def fake(model, messages, json_mode):
+        tried.append(model)
+        if model == "openai/gpt-oss-120b":
+            res = httpx.Response(400, request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"))
+            raise BadRequestError("Tool choice is none, but model called a tool (tool_use_failed)", response=res, body=None)
+        return '{"ok": true}'
+
+    monkeypatch.setattr(llm, "_complete", fake)
+    assert asyncio.run(llm.ask("hi", json_mode=True)) == {"ok": True}
+    assert tried == ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]

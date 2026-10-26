@@ -70,7 +70,13 @@ async def _paced():
 async def _get(url: str) -> httpx.Response:
     for attempt in range(1, 5):
         await _paced()
-        res = await client().get(url)
+        try:
+            res = await client().get(url)
+        except httpx.TransportError:  # a slow or dropped connection: try again before failing the agent's task
+            if attempt == 4:
+                raise
+            await asyncio.sleep(attempt)
+            continue
         if res.status_code == 429 and attempt < 4:
             wait = float(res.headers.get("retry-after") or 0) or 2 ** attempt
             await asyncio.sleep(min(wait, 10))

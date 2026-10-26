@@ -17,6 +17,7 @@ class CONFIG:
     MAX_CANDIDATES = 11        # trialled per role
     MIN_SCORE = 40             # average feedback below this = skip...
     MIN_FEEDBACKS = 3          # ...but only once there are this many ratings, so one unlucky trial is not a ban
+    BENCH_MIN_SCORE = 60       # standard benchmark score (0-100, equal-weight aspects) needed to be hired
     ALIVE_TIMEOUT = 5.0
     TRIAL_TIMEOUT = 30.0       # long enough for the LLM client to wait out a rate-limit pause
     TASK_TIMEOUT = 30.0

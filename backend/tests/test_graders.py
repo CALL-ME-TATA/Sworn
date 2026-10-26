@@ -3,7 +3,6 @@ import asyncio
 
 from app.rules import pick_sentences, plan, sentences, supports
 from app.sources import html_to_text, quote_in
-from app.trials import cited_ids, grade_claims, grade_generator, grade_planner, grade_retriever, grade_verifier
 
 run = asyncio.run
 
@@ -64,39 +63,3 @@ def test_quote_in_ignores_case_spacing_and_curly_quotes_and_rejects_short_or_mis
     assert not quote_in(PAGE, "in 1889")
     assert not quote_in(PAGE, "The tower was completed in 1890.")
     assert not quote_in(PAGE, None)
-
-
-def test_reasoner_and_reader_pass_only_with_the_right_answer_and_a_real_quote():
-    t = {"expect": "1889"}
-    good = [{"text": "Completed in 1889", "source_url": "x", "quote": "The tower was completed in 1889"}]
-    wrong = [{"text": "Completed in 1890", "source_url": "x", "quote": "The tower was completed in 1890"}]
-    fake = [{"text": "Completed in 1889", "source_url": "x", "quote": "Everyone agrees it was finished in 1889."}]
-    assert run(grade_claims(t, good, fetch_text))["pass"]
-    assert not run(grade_claims(t, wrong, fetch_text))["pass"]
-    assert not run(grade_claims(t, fake, fetch_text))["pass"]
-    assert not run(grade_claims(t, [], fetch_text))["pass"]
-    assert not run(grade_claims(t, None, fetch_text))["pass"]
-
-
-def test_planner_and_retriever_trials():
-    t = {"title": "Eiffel Tower"}
-    assert run(grade_planner(t, {"subquestions": [{"question": "When was the Eiffel Tower completed?", "search": "Eiffel Tower"}]}))["pass"]
-    assert not run(grade_planner(t, {"subquestions": [{"question": "When was it built?", "search": "tower"}]}))["pass"]
-    assert not run(grade_planner(t, {"subquestions": []}))["pass"]
-    assert run(grade_retriever(t, {"sources": [{"title": "Eiffel Tower", "url": "u"}]}))["pass"]
-    assert not run(grade_retriever(t, {"sources": [{"title": "Big Ben", "url": "u"}]}))["pass"]
-
-
-def test_verifier_must_get_both_the_true_and_the_false_claim_right():
-    cases = [{"expect": "supported"}, {"expect": "unsupported"}]
-    assert run(grade_verifier(cases, [{"verdict": "supported"}, {"verdict": "unsupported"}]))["pass"]
-    assert not run(grade_verifier(cases, [{"verdict": "supported"}, {"verdict": "supported"}]))["pass"]
-    assert not run(grade_verifier(cases, [{"verdict": "supported"}]))["pass"]
-
-
-def test_generator_must_cite_and_only_known_claims():
-    t = {"claims": [{"id": "c1"}, {"id": "c2"}]}
-    assert run(grade_generator(t, {"answer": "A [c1]. B [c2]."}))["pass"]
-    assert not run(grade_generator(t, {"answer": "A [c1]. B [c9]."}))["pass"]
-    assert not run(grade_generator(t, {"answer": "No citations here."}))["pass"]
-    assert cited_ids("x [c1] y [c12]") == ["c1", "c12"]

@@ -69,6 +69,7 @@ async def list_agents() -> list[dict]:
         if not last:
             raise
         print(f"indexer unavailable ({err}); using the last saved agent list")
+        await store.redis.set("registry:agents", last, ex=120)  # the other roles reuse it instead of asking again
         return json.loads(last)
     body = json.dumps(out)
     await store.redis.set("registry:agents", body, ex=600)
@@ -146,7 +147,7 @@ async def discover(role: str) -> list[dict]:
         f = a.get("registrationFile") or {}
         endpoint, protocol = (f.get("a2aEndpoint"), "a2a") if f.get("a2aEndpoint") else (f.get("mcpEndpoint"), "mcp")
         if a["owner"] != owner and endpoint:  # MCP-only agents count too
-            theirs.append({"asset": a["id"], "name": f.get("name") or a["id"][:8], "endpoint": endpoint, "protocol": protocol,
+            theirs.append({"asset": a["id"], "owner": a["owner"], "name": f.get("name") or a["id"][:8], "endpoint": endpoint, "protocol": protocol,
                            "skills": f.get("oasfSkills") or [], "ours": False, "registry": "8004"})
     sati = sati_candidates()
     extra = []
@@ -225,10 +226,30 @@ async def is_alive(c: dict) -> bool:
     return await ping(c["endpoint"])
 
 
-async def get_score(asset: str, registry: str = "8004") -> dict | None:
-    """{average, count} of on-chain feedback, or None when the agent has none (or no on-chain asset yet)."""
+async def operator_wallets(candidate: dict) -> set[str]:
+    """Wallets run by the agent's own operator: their ratings of it are self-ratings and do not count.
+    For our agents that is both our wallets (owner and reviewer); for anyone else, the agent's owner."""
+    if candidate.get("ours"):
+        return {w for w in (await wallets()).values() if w}
+    return {candidate["owner"]} if candidate.get("owner") else set()
+
+
+async def get_score(asset: str, registry: str = "8004", exclude: set[str] = frozenset()) -> dict | None:
+    """{average, count, self_count} of independent on-chain ratings, or None when there are none.
+    8004 ratings are read one by one with the wallet that gave each, so ratings from `exclude` (the agent's own
+    operator) are left out of the average. SATI's API only gives a total, so its agents' scores cannot be split."""
     if asset.startswith("unregistered"):
         return None
+    if registry == "8004":
+        try:
+            ratings = await bridge("GET", f"/ratings/{asset}")
+        except Exception:  # noqa: BLE001 - unknown is treated like a new agent, never as a pass
+            return None
+        independent = [r["score"] for r in ratings if r["client"] not in exclude and r["score"] is not None]
+        self_count = len(ratings) - len(independent)
+        if not independent:
+            return {"average": None, "count": 0, "self_count": self_count} if self_count else None
+        return {"average": round(sum(independent) / len(independent), 1), "count": len(independent), "self_count": self_count}
     if registry == "sati":
         try:
             res = await _http.get(f"{SATI_API}/reputation/{asset}?network=devnet", timeout=CONFIG.ALIVE_TIMEOUT * 2)
@@ -237,10 +258,6 @@ async def get_score(asset: str, registry: str = "8004") -> dict | None:
                 return {"average": round(float(r["summaryValue"]) / 10 ** (r.get("summaryValueDecimals") or 0), 1), "count": r["count"]}
         except Exception:  # noqa: BLE001 - SATI's API is often down; an unknown score is treated like a new agent
             pass
-        return None
-    try:
-        return await bridge("GET", f"/score/{asset}")
-    except Exception:  # noqa: BLE001
         return None
 
 

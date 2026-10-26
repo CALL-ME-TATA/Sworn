@@ -6,6 +6,7 @@ hire -> plan -> retrieve -> read -> reason -> verify -> generate -> record
 Every agent, ours or third-party, is reached over HTTP and screened before it is hired.
 Usage: python -m app.orchestrator "your question" [--kill] [--no-feedback]"""
 import asyncio
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -14,14 +15,17 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
-from . import llm, metrics, store
+from . import bench, llm, metrics, store
 from .config import CONFIG, ROLES
 from .llm import ask
-from .registry import discover, get_score, give_feedback, is_alive, registry_stats
+from .registry import discover, get_score, give_feedback, is_alive, operator_wallets, registry_stats
 from .sources import seed_cache
-from .trials import cited_ids, make_trial
 
 _http = httpx.AsyncClient()
+
+
+def cited_ids(answer: str) -> list[str]:
+    return re.findall(r"\[(c\d+)\]", answer or "")
 
 
 class AgentError(Exception):
@@ -138,6 +142,7 @@ class Run:
         self.team: dict[str, list[dict]] = {}
         self.dead: set[str] = set()
         self.pending_failover = None
+        self.benchmarked: list[tuple[dict, str, dict]] = []  # fresh benchmark results, published on-chain at the end
         self.killed = None  # the agent the kill demo took offline; always revived before the run ends
         self._save_lock = asyncio.Lock()
         self.t0 = time.monotonic()
@@ -171,10 +176,12 @@ class Run:
                 self.touch(agent, role).update(outcome=outcome, fail=1)
             return None
 
-        rep = await get_score(agent["asset"], entry["registry"])
+        # Only independent ratings count: none from the agent's own operator (for our agents, none from us).
+        rep = await get_score(agent["asset"], entry["registry"], await operator_wallets(agent))
         entry["score"], entry["ratings"] = (rep or {}).get("average"), (rep or {}).get("count", 0)
+        entry["self_ratings"] = (rep or {}).get("self_count", 0)
         if rep and rep["count"] >= CONFIG.MIN_FEEDBACKS and rep["average"] < CONFIG.MIN_SCORE:
-            return reject("reputation", f"average score {rep['average']} over {rep['count']} ratings")
+            return reject("reputation", f"independent average {rep['average']} over {rep['count']} ratings")
 
         entry["stage"] = "alive"
         await self.save()
@@ -189,25 +196,46 @@ class Run:
             return reject("trial", f"live MCP server with {len(tools)} tools ({', '.join(tools[:3])}{', …' if len(tools) > 3 else ''}); "
                                    "none takes a Sworn task, so it can't do this job")
 
+        # The standard benchmark (app/bench.py): the same items, aspects and grading for every candidate in the role.
+        # One result per agent per day; everyone benchmarked that day gets the same sample of items.
         entry["stage"] = "trial"
         await self.save()
         started = time.monotonic()
-        try:
-            trial = await make_trial(role)
-            outs = await asyncio.gather(*(post(agent["endpoint"], {"run_id": self.r["run_id"], "task_id": f"trial-{i}", "role": role, "input": inp},
-                                               CONFIG.TRIAL_TIMEOUT) for i, inp in enumerate(trial.inputs)))
-            grade = await trial.grade(outs)
-            if not grade["pass"]:
-                return reject("trial", grade["reason"], "trial-failed")
-        except AgentBusy as err:
-            entry.update(result="busy", reason=f"{BUSY}: {err}")
-            metrics.SCREENED.labels(role, "busy", "trial").inc()
-            return None
-        except AgentError as err:
-            return reject("trial", str(err), "timeout" if str(err) == "timeout" else "trial-failed")
+        day = datetime.now(timezone.utc).date()
+        report = await store.todays_benchmark(agent["asset"], role, bench.VERSION, day)
+        cached = report is not None
+        if cached and not report.get("tx") and self.feedback:
+            self.benchmarked.append((agent, role, report))  # measured earlier without writing on-chain: publish it now
+        if not cached:
+            async def call(inp):
+                t = time.monotonic()
+                try:
+                    out = await post(agent["endpoint"], {"run_id": self.r["run_id"], "task_id": "benchmark", "role": role, "input": inp},
+                                     CONFIG.TRIAL_TIMEOUT)
+                except AgentBusy:
+                    raise
+                except AgentError as err:
+                    # Stop early only if the agent cannot be reached at all; any other error counts against that item.
+                    down = str(err) in ("timeout", "unreachable") or str(err).startswith(("HTTP 404", "HTTP 410", "HTTP 30"))
+                    return None, time.monotonic() - t, str(err), down
+                good = SHAPES[role](out)
+                return (out if good else None), time.monotonic() - t, None if good else "wrong reply shape", False
+            try:
+                report = await bench.run(role, day.isoformat(), call)
+            except AgentBusy as err:
+                entry.update(result="busy", reason=f"{BUSY}: {err}")
+                metrics.SCREENED.labels(role, "busy", "trial").inc()
+                return None
+            if not agent["asset"].startswith("unregistered"):
+                report["id"] = await store.save_benchmark(agent["asset"], agent["name"], role, bench.VERSION, day, report)
+                self.benchmarked.append((agent, role, report))
+        entry["bench"] = {"id": report.get("id"), "score": report["score"], "aspects": report["aspects"], "cached": cached, "version": bench.VERSION}
+        if report["score"] < CONFIG.BENCH_MIN_SCORE:
+            weak = ", ".join(f"{a} {v:.0f}" for a, v in report["aspects"].items() if v < CONFIG.BENCH_MIN_SCORE)
+            return reject("trial", f"benchmark {report['score']:.0f}/100, under {CONFIG.BENCH_MIN_SCORE} (weak: {weak})")
         entry.update(stage="hired", result="passed")
         metrics.SCREENED.labels(role, "passed", "hired").inc()
-        return {"agent": agent, "score": entry["score"], "secs": time.monotonic() - started}
+        return {"agent": agent, "score": report["score"], "secs": time.monotonic() - started}
 
     async def hire(self, role: str) -> list[dict]:
         candidates = await discover(role)
@@ -220,7 +248,7 @@ class Run:
                 await self.save()
 
         passed = [p for p in await asyncio.gather(*(screened(c) for c in candidates)) if p]
-        passed.sort(key=lambda p: (-(p["score"] if p["score"] is not None else 50), p["secs"]))
+        passed.sort(key=lambda p: (-p["score"], p["secs"]))  # best benchmark score first, then the faster one
         return [p["agent"] for p in passed]
 
     # ---------- calls ----------
@@ -409,7 +437,7 @@ class Run:
             async with gate, per_asset.setdefault(item["asset"], asyncio.Lock()):
                 try:
                     item["tx"] = await give_feedback(item["asset"], score=item["score"], role=item["role"], outcome=item["outcome"],
-                                                     endpoint=s["endpoint"], report_url=self.report_url, registry=s["registry"])
+                                                     endpoint=s["endpoint"], report_url=s.get("report_url", self.report_url), registry=s["registry"])
                     metrics.FEEDBACK.labels(s["registry"], "ok").inc()
                     self.log(f"feedback {s['name']}: {item['score']} ({item['outcome']})")
                 except Exception as err:  # noqa: BLE001
@@ -417,8 +445,21 @@ class Run:
                     metrics.FEEDBACK.labels(s["registry"], "fail").inc()
                     self.log(f"feedback {s['name']} failed: {err}")
 
+        # Fresh benchmark results are published too: tag1 = role, tag2 = benchmark version, linked to the full report.
+        for agent, role, report in self.benchmarked:
+            item = {"asset": agent["asset"], "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
+                    "score": round(report["score"]), "outcome": bench.VERSION, "benchmark_id": report["id"]}
+            if item["registry"] == "sati" and not CONFIG.SATI_FEEDBACK:
+                item["error"] = "SATI feedback is off (set SATI_FEEDBACK=on)"
+            self.r["feedback"].append(item)
+            items.append((item, {"name": agent["name"], "endpoint": agent["endpoint"], "registry": item["registry"],
+                                 "report_url": f"{CONFIG.AGENTS_BASE_URL}/api/benchmarks/{report['id']}"}))
+
         if self.feedback:
             await asyncio.gather(*(write(item, s) for item, s in items if "error" not in item))
+            for item, _ in items:
+                if item.get("benchmark_id") and item.get("tx"):
+                    await store.set_benchmark_tx(item["benchmark_id"], item["tx"])
 
         r = self.r
         bad = [h for h in r["hiring"] if h["ours"] and h.get("id", "").startswith("bad-")]

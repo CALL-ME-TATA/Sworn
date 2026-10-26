@@ -167,6 +167,21 @@ async def validations(run_id: str):
     return await store.validations(run_id)
 
 
+@app.get("/api/benchmarks")
+async def benchmarks():
+    """Latest standard-benchmark result for every agent, best first within each role."""
+    return await store.list_benchmarks()
+
+
+@app.get("/api/benchmarks/{bench_id}")
+async def benchmark(bench_id: int):
+    """One full benchmark report: every item, its aspect and score. On-chain ratings tagged sab-v1 link here."""
+    b = await store.get_benchmark(bench_id)
+    if not b:
+        raise HTTPException(404, "unknown benchmark")
+    return b
+
+
 @app.get("/api/compare")
 async def compare():
     data = await store.latest_comparison()

@@ -58,7 +58,7 @@ Click a feedback transaction link, show Solana Explorer:
 **2:20 to 2:50 · Results (Person A)**
 
 > Same five questions through a fixed team with one bad agent, and through our system. Unsupported claims in
-> the final answer: 17% for the fixed team, zero for ours. 100% of claims tagged, 100% of bad agents
+> the final answer: 11% for the fixed team (4 of 38), zero for ours (0 of 48). 100% of claims tagged, 100% of bad agents
 > rejected, failover in under 5 seconds.
 
 **2:50 to 3:00 · Close (Person A)**

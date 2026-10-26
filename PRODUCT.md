@@ -53,7 +53,7 @@ None. No logo, colors or fonts are fixed (confirmed 24 Oct 2026).
 
 Real devnet results in `runs/` and README.md: 100% of claims tagged, 2 of 2 bad agents rejected, 0 of 3
 third-party agents passed (dead endpoints), failover 32 ms warm / 3.1 s cold, 8 of 8 feedback transactions,
-unsupported claims 17% (fixed team) vs 0% (ours) on 5 questions. Registry: 4,829 devnet agents, 86 with a
+unsupported claims 11% (fixed team, 4 of 38) vs 0% (ours, 0 of 48) on 5 questions. Registry: 4,829 devnet agents, 86 with a
 callable endpoint. No testimonials, users or partnerships exist; do not invent them.
 
 ## Product Principles

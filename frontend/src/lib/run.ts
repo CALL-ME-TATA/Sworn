@@ -3,11 +3,15 @@
 export const ROLES = ["planner", "retriever", "reader", "reasoner", "verifier", "generator"] as const;
 export type Role = (typeof ROLES)[number];
 export const ROUNDS = ["reputation", "alive", "trial"] as const;
+export const ASPECTS = ["accuracy", "grounding", "honesty", "reliability", "speed"] as const;
+export type Aspect = (typeof ASPECTS)[number];
+export type BenchmarkRow = { id: number; asset: string; name: string; role: Role; version: string; day: string; score: number; tx: string | null; aspects: Partial<Record<Aspect, number>> };
 
 export type Hiring = {
   asset: string; name: string; role: Role; ours: boolean; registry: "8004" | "sati";
   stage: "reputation" | "alive" | "trial" | "hired"; result: "checking" | "passed" | "failed" | "busy"; // busy: our AI provider was out of quota, not scored
-  reason: string | null; score: number | null; ratings: number;
+  reason: string | null; score: number | null; ratings: number; self_ratings?: number; protocol?: string;
+  bench?: { id?: number; score: number; aspects: Partial<Record<Aspect, number>>; cached: boolean; version: string };
 };
 export type Member = { asset: string; name: string };
 export type Task = {

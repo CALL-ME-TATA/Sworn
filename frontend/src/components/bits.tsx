@@ -23,8 +23,14 @@ export function Origin({ h }: { h: Partial<Hiring> & { protocol?: string } }) {
   );
 }
 
+/** Independent on-chain reputation; ratings the agent's own operator gave it are left out and only counted. */
 export function Rating({ h }: { h: Partial<Hiring> }) {
-  return <span className="text-[13px] text-muted">{h.score != null ? `${h.score} avg · ${h.ratings} rating${h.ratings === 1 ? "" : "s"}` : "no ratings yet"}</span>;
+  const main = h.score != null ? `${h.score} avg · ${h.ratings} independent rating${h.ratings === 1 ? "" : "s"}` : "no independent ratings";
+  return (
+    <span className="text-[13px] text-muted" title="Ratings from the agent's own operator are self-ratings and do not count">
+      {main}{h.self_ratings ? ` · ${h.self_ratings} self-ratings ignored` : ""}
+    </span>
+  );
 }
 
 export function Title({ children, note }: { children: React.ReactNode; note?: React.ReactNode }) {

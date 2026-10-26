@@ -1,13 +1,12 @@
 """One function: ask(prompt, json=...) -> model reply. Used by our agents.
 LLM_PROVIDER picks the OpenAI-compatible endpoint: groq (default), openai or gemini."""
+import asyncio
 import json
 import os
 import re
 import time
 
-import asyncio
-
-from openai import APIConnectionError, AsyncOpenAI, InternalServerError, RateLimitError
+from openai import APIConnectionError, AsyncOpenAI, BadRequestError, InternalServerError, RateLimitError
 
 from .config import CONFIG
 
@@ -68,6 +67,12 @@ async def _complete(model: str, messages: list[dict], json_mode: bool) -> str:
             if attempt == 3:
                 raise
             await asyncio.sleep(attempt)
+        except BadRequestError as err:
+            # gpt-oss sometimes tries to call its built-in browsing tool, which Groq rejects ("tool_use_failed").
+            # Ask once more without tools; if it does it again, the caller moves on to the next model.
+            if "tool_use_failed" not in str(err) or attempt > 1:
+                raise
+            messages = [{"role": "system", "content": "You have no tools. Do not call any tool; reply directly."}] +                        [m for m in messages if m["role"] != "system" or "no tools" not in m["content"]]
     raise RuntimeError("unreachable")
 
 
@@ -106,6 +111,11 @@ async def ask(prompt: str, *, json_mode: bool = False, system: str | None = None
                 except ValueError as err:
                     if attempt == 2:
                         raise ValueError(f"model did not return JSON: {err}") from err
+        except BadRequestError as err:
+            if "tool_use_failed" not in str(err):
+                raise
+            print(f"{model}: kept calling a tool, trying the next model")
+            continue
         except RateLimitError as err:
             # Each model has its own daily and per-minute budget: rest this one until its limit resets, use the next.
             msg = str(err)

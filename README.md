@@ -18,7 +18,13 @@ hire -> plan -> retrieve -> read -> reason -> verify -> generate -> record
 
 1. **Discover agents by skill.** OASF skills in each registry profile, for six roles: planner, retriever,
    reader, reasoner, verifier and generator.
-2. **Screen every candidate.** On-chain reputation, then liveness, then a known-answer trial graded by code.
+2. **Screen every candidate, the same way.** Ours or anyone's:
+   - **Independent reputation:** every on-chain rating is read with the wallet that gave it, and ratings from
+     the agent's own operator are ignored (for our agents, all of ours).
+   - **Liveness:** the endpoint answers (an MCP handshake for MCP servers).
+   - **Standard benchmark (sab-v1):** public SQuAD 2.0, HotpotQA and FEVER items, five equally weighted aspects
+     (accuracy, grounding, honesty, reliability, speed) graded by code; 60/100 to be hired. See
+     [docs/BENCHMARK.md](docs/BENCHMARK.md).
    Fail any one and it is out.
 3. **Planner agent** splits the question into sub-questions, each with a Wikipedia query and a web query.
 4. **Hired team.**
@@ -31,7 +37,7 @@ hire -> plan -> retrieve -> read -> reason -> verify -> generate -> record
 5. **Replace agent.** A timeout or crash marks the agent dead, and a screened backup takes over.
 6. **Final answer** with sources and agent IDs on every claim.
 7. **Write performance back** to the registry, one feedback transaction per agent, each linking the run
-   report.
+   report. New benchmark results are published too (`tag2` = `sab-v1`), each linking its full per-item report.
 
 Ambiguous questions get a "which one?" prompt before the run. Dead ends get follow-up suggestions after it.
 
@@ -67,6 +73,7 @@ From the command line:
 ```bash
 docker compose exec backend python -m app.orchestrator "How was penicillin discovered?" --kill --no-feedback
 docker compose exec backend python -m app.baseline      # fixed team vs ours on data/questions.json
+docker compose exec backend python -m app.bench_build   # rebuild the benchmark items from the public datasets
 docker compose exec backend python -m pytest -q
 docker compose run --rm registry npm run sati-sync       # refresh SATI agents from the chain
 ```
@@ -76,11 +83,18 @@ docker compose run --rm registry npm run sati-sync       # refresh SATI agents f
 | Measure | Result |
 |---|---|
 | Claims tagged with source and agent IDs | 100% |
-| Deliberately bad agents rejected | 2 of 2 (now by their on-chain reputation, before any trial) |
-| Third-party registry agents that passed | 0 of 6 (3 low reputation, 3 not responding) |
-| Backup takeover after the main retriever is killed | 1.8 s |
-| Run time, two-part question | 25 to 40 s |
-| Unsupported claims in answers, fixed team vs ours | 17% vs 0% (measured with the earlier Node version; rerun `app.baseline` to refresh) |
+| Deliberately bad agents rejected | 2 of 2, by the standard benchmark (Fake-Quote Bot 40/100, Slow Bot 0/100) |
+| Our working agents on the benchmark | 75 to 100 out of 100 (retrievers score 0 on multi-hop accuracy; see below) |
+| Outside registry agents hired | 0 of 8: 4 with low independent ratings, 2 not responding, 2 live MCP servers that can't take a task |
+| Backup takeover after the main retriever is killed | 7 ms to 2 s |
+| Run time | 25 to 45 s |
+| Unsupported claims in answers, fixed team vs Sworn (5 questions) | **4 of 38 (11%) vs 0 of 48 (0%)** |
+
+The fixed team has no screening and no checking, and one of its agents invents quotes. Both sides are graded the
+same way: a claim used in the answer is unsupported if its quote is not on the page it cites.
+
+Our retrievers pass the benchmark overall, but score 0 on accuracy: on HotpotQA's multi-hop questions, a single
+search for the whole question does not surface both gold articles. That is a real weakness the benchmark exposes.
 
 ## Layout
 
@@ -88,7 +102,7 @@ docker compose run --rm registry npm run sati-sync       # refresh SATI agents f
 |---|---|
 | `backend/app/orchestrator.py` | LangGraph orchestrator: hire, plan, retrieve, read, reason, verify, generate, replace, record |
 | `backend/app/agents.py` | Our agents (7 good, 2 deliberately bad) |
-| `backend/app/trials.py` | Known-answer trials per role and their graders |
+| `backend/app/bench.py`, `bench_build.py` | The standard benchmark (sab-v1): items from public datasets, five equal aspects graded by code |
 | `backend/app/registry.py` | Discovery (8004 indexer + SATI), liveness, reputation, feedback |
 | `backend/app/main.py` | FastAPI: agent endpoints, run API, kill switch, health, metrics |
 | `backend/app/store.py` | Postgres and Redis |

@@ -6,9 +6,8 @@ import json
 
 from . import store
 from .config import CONFIG, DATA, agent_url
-from .orchestrator import post, run
+from .orchestrator import cited_ids, post, run
 from .sources import quote_in, seed_cache, source_text
-from .trials import cited_ids
 
 REASONERS = ["reasoner-a", "bad-liar"]
 

@@ -241,11 +241,19 @@ export function Evidence({ r, target }: { r: Run; target?: string }) {
 
 /* ---------- hiring ---------- */
 
-const ROUND_LABEL = { reputation: "Track record", alive: "Answers", trial: "Test" } as const;
+const ROUND_LABEL = { reputation: "Track record", alive: "Answers", trial: "Benchmark" } as const;
+
+const aspectTip = (b: NonNullable<Hiring["bench"]>) =>
+  `Standard benchmark ${b.version}${b.cached ? " (today's result)" : ""}: ` +
+  Object.entries(b.aspects).map(([a, v]) => `${a} ${Math.round(v ?? 0)}`).join(", ") + ". Equal weights.";
 
 function Round({ h, round }: { h: Hiring; round: (typeof ROUNDS)[number] }) {
   const order = [...ROUNDS, "hired"];
   const at = order.indexOf(h.stage), i = order.indexOf(round);
+  if (round === "trial" && h.bench && (i <= at)) {
+    const pass = h.stage === "hired";
+    return <span className={`tag ${pass ? "tag-green" : "tag-red"}`} title={aspectTip(h.bench)}>{pass ? <Icon name="check" size={10} /> : <Icon name="x" size={10} />}{Math.round(h.bench.score)}/100</span>;
+  }
   if (i < at || (i === at && h.stage === "hired")) {
     const label = round === "reputation" ? (h.score != null ? String(h.score) : "new") : round === "alive" ? "live" : "pass";
     return <span className="tag tag-green"><Icon name="check" size={10} />{label}</span>;
@@ -260,7 +268,7 @@ export function HiringView({ r }: { r: Run }) {
   const dead = deadSet(r);
   return (
     <>
-      <Title note="Every candidate goes through three checks: its on-chain track record (out below 40 after 3 ratings), whether it answers, and a known-answer test graded by code.">Hiring</Title>
+      <Title note="Every candidate, ours or anyone's, goes through the same three checks: its independent on-chain track record (self-ratings ignored; out below 40 after 3 ratings), whether it answers, and the standard benchmark (five equally weighted aspects, graded by code; 60/100 to be hired). Hover a benchmark score for its aspects.">Hiring</Title>
       {!r.hiring.length && <Empty>Searching the registries for candidates…</Empty>}
       <div className="space-y-6">
         {ROLES.map((role) => {

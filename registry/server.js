@@ -64,6 +64,20 @@ app.get('/score/:asset', async (req, res) => {
   }
 });
 
+// Every individual rating with the wallet that gave it, so a caller can leave out ratings an operator gave its own agents.
+app.get('/ratings/:asset', async (req, res) => {
+  try {
+    const list = await sdk(null).readAllFeedback(new PublicKey(req.params.asset), false);
+    res.json(list.map(f => ({
+      client: f.client.toBase58(),
+      score: f.score ?? Number(f.value) / 10 ** (f.valueDecimals ?? 0),
+      tag1: f.tag1, tag2: f.tag2,
+    })));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 app.post('/feedback', async (req, res) => {
   if (!reviewer) return res.status(503).json({ error: 'ORCHESTRATOR_PRIVATE_KEY is not set' });
   const { asset, score, role, outcome, endpoint, reportUrl } = req.body ?? {};

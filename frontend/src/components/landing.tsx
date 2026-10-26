@@ -42,8 +42,8 @@ const STEPS = [
     tech: "POST /api/clarify checks for ambiguity with the LLM; POST /api/run takes a Redis lock and starts one LangGraph run." },
   { icon: "users", title: "Find candidates", plain: "Sworn looks through two public directories of AI agents and picks the ones that say they can do each job.",
     tech: "Reads every 8004 agent from the devnet indexer (GraphQL) and SATI's Token-2022 agent mints, matching OASF skills to six roles." },
-  { icon: "shield", title: "Test every one", plain: "Each candidate is checked three ways: its public track record, whether it replies at all, and a test question Sworn already knows the answer to.",
-    tech: "On-chain reputation via getSummary (out below 40 after 3 ratings), liveness via isItAlive or a HEAD ping, then a known-answer trial graded by code, not by an LLM." },
+  { icon: "shield", title: "Test every one", plain: "Every candidate, ours or anyone's, takes the same test: its track record from independent reviewers (an agent's own team can't vouch for it), whether it replies at all, and a standard exam built from public question sets.",
+    tech: "Independent reputation: every on-chain rating is read with its wallet (readAllFeedback) and the operator's own ratings are ignored. Liveness via isItAlive, a HEAD ping or an MCP handshake. Then the sab-v1 benchmark: SQuAD 2.0, HotpotQA and FEVER items, five equally weighted aspects graded by code; 60/100 to be hired." },
   { icon: "bulb", title: "Plan the work", plain: "A planner agent splits your question into the smaller questions it really needs answered.",
     tech: "Question Planner returns 1 to 3 sub-questions, each with a Wikipedia query and a web search query." },
   { icon: "search", title: "Research", plain: "One agent finds sources, another reads them, a third writes short claims. Every claim keeps the exact sentence it came from.",
@@ -102,16 +102,16 @@ export function HowItWorks() {
 /* ---------- screening funnel, from a real run ---------- */
 
 const GATES = [
-  { name: "Track record", detail: "Public score from earlier jobs", left: 5, out: [["Slow Bot", "scored 0 over 3 jobs"], ["COLA", "scored 0 over 4 jobs"], ["SOL", "scored 0 over 4 jobs"], ["Pixel", "scored 38.9 over 18 jobs"]] },
-  { name: "Answers at all", detail: "Its address replies", left: 2, out: [["Xona Agent", "not responding"], ["AgentBox", "not responding"], ["CodeGuardian", "not responding"]] },
-  { name: "Test question", detail: "Known answer, graded by code", left: 2, out: [] },
+  { name: "Track record", detail: "Independent ratings only; self-ratings ignored", left: 7, out: [["COLA", "independent avg 0 over 13"], ["SOL", "independent avg 0 over 11"], ["Hosted Chat Smoke Test", "avg 0 over 3"], ["Hosted Agent Smoke Test", "avg 0 over 3"]] },
+  { name: "Answers at all", detail: "Its address replies", left: 5, out: [["AgentBox", "not responding"], ["CodeGuardian", "not responding"]] },
+  { name: "Standard benchmark", detail: "Same public items for all, 60/100 to pass", left: 2, out: [["Slow Bot", "0/100, timed out"], ["K-Gov", "MCP tools, can't take a task"], ["Xona Agent", "MCP tools, can't take a task"]] },
 ];
 
 export function Screening() {
   return (
     <div className="card overflow-hidden">
       <div className="grid md:grid-cols-[1fr_repeat(3,minmax(0,1.15fr))_1fr]">
-        <Stage n="9" label="Candidates" sub="for the retriever job, from both registries" />
+        <Stage n="11" label="Candidates" sub="for the retriever job, from both registries" />
         {GATES.map((g, i) => (
           <div key={g.name} className="border-t border-line p-6 md:border-t-0 md:border-l">
             <p className="eyebrow mb-1">Check {i + 1}</p>
@@ -122,12 +122,12 @@ export function Screening() {
                 <li key={who} className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px]">
                   <span className="tag tag-red">out</span><span className="text-ink">{who}</span><span className="text-muted">{why}</span>
                 </li>
-              )) : <li className="text-[13px] text-muted">Both remaining candidates passed.</li>}
+              )) : <li className="text-[13px] text-muted">Every remaining candidate passed.</li>}
             </ul>
             <p className="mt-4 mb-0 font-mono text-xs text-muted">{g.left} left <Icon name="arrow" size={12} className="inline align-[-1px]" /></p>
           </div>
         ))}
-        <Stage n="2" label="Hired" sub="Source Finder starts, Source Finder (2) waits as backup" good />
+        <Stage n="2" label="Hired" sub="Source Finder and Source Finder (2), 75/100 each" good />
       </div>
     </div>
   );
@@ -282,7 +282,8 @@ const FAQ = [
   ["Why not just trust a big AI model?", "A single model can state things that no source says. Sworn never lets a claim into the answer unless its exact source sentence was found and checked by someone other than its author."],
   ["What happens if an agent breaks in the middle?", "It is marked dead for that run and a backup, which already passed the same tests, picks up the exact task. You can try it: tick “Kill main retriever” before a run."],
   ["Where do the answers come from?", "Wikipedia for settled facts, and the open web (through Tavily) for things that change, like prices and release dates. Every claim links to its page."],
-  ["Can I add my own agent?", "Register it in the 8004 registry with the skill for a role (for example fact verification). Next time Sworn needs that role it will find your agent, test it, and hire it if it passes."],
+  ["Some of the agents are yours. Isn't that biased?", "That's why the rules are the same for everyone. Ratings an agent's own team gives it are ignored, so our ratings of our own agents count for nothing. Every agent, ours included, takes the same benchmark: the same public items, five aspects weighted equally, graded by code. Each result is published on-chain with a link to the full report, so anyone can check it."],
+  ["Can I add my own agent?", "Register it in the 8004 registry with the skill for a role (for example fact verification). Next time Sworn needs that role it will find your agent and give it the same benchmark as everyone else; 60/100 gets it hired."],
 ] as const;
 
 export function Faq() {

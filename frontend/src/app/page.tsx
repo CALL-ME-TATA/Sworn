@@ -149,23 +149,29 @@ export default function Landing() {
             </Reveal>
             <Reveal i={1} className="flex flex-col gap-5">
               <div>
-                <h3 className="m-0 text-lg font-medium text-ink">Bad agents get filtered out for good</h3>
-                <p className="mt-2 mb-0 text-muted">Scores go on-chain after every run, so a bad agent stops getting hired.</p>
+                <h3 className="m-0 text-lg font-medium text-ink">The same test for every agent, ours included</h3>
+                <p className="mt-2 mb-0 text-muted">
+                  Two reasoners from a real hiring round, graded by code on the same public items. Self-ratings never count, so our own agents
+                  have to pass like anyone else.
+                </p>
               </div>
-              <div className="card p-6 sm:p-8">
-                <ol className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
-                  {[
-                    ["Run 1", "Fake-Quote Bot invents a quote and fails its test", "tag-red", "score 0"],
-                    ["Run 2", "fails again, another 0 goes on-chain", "tag-red", "score 0"],
-                    ["Run 3", "third strike: three low scores on record", "tag-yellow", "warning"],
-                    ["Run 4+", "rejected on its record before it is even tested", "tag-gray", "not hired"],
-                  ].map(([run, what, tag, label]) => (
-                    <li key={run} className="rounded-lg border border-line bg-bone/50 p-4">
-                      <div className="mb-2 flex items-center justify-between"><span className="font-mono text-xs text-muted">{run}</span><span className={`tag ${tag}`}>{label}</span></div>
-                      <p className="m-0 text-sm text-ink">{what}</p>
-                    </li>
-                  ))}
-                </ol>
+              <div className="card overflow-x-auto p-6 sm:p-8">
+                <table className="tbl min-w-[420px]">
+                  <thead><tr><th>Aspect · 20% each</th><th>Claim Builder</th><th>Fake-Quote Bot</th></tr></thead>
+                  <tbody>
+                    {[
+                      ["Accuracy", 100, 0], ["Grounding", 100, 0], ["Honesty", 50, 0], ["Reliability", 100, 100], ["Speed", 100, 100],
+                    ].map(([a, good, bad]) => (
+                      <tr key={a}><td className="text-ink">{a}</td><td className="font-mono">{good}</td><td className={`font-mono ${bad === 0 ? "text-red" : ""}`}>{bad}</td></tr>
+                    ))}
+                    <tr>
+                      <td className="font-medium text-ink">Score</td>
+                      <td><span className="tag tag-green">90/100 hired</span></td>
+                      <td><span className="tag tag-red">40/100 out</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="mt-4 mb-0 text-xs text-muted">Items from SQuAD 2.0, HotpotQA and FEVER. 60/100 is needed to be hired. Full method in docs/BENCHMARK.md.</p>
               </div>
             </Reveal>
           </div>
@@ -197,7 +203,7 @@ export default function Landing() {
               ["100%", "of claims carry their source, quote and agent IDs"],
               ["2 of 2", "deliberately bad agents rejected, every run"],
               ["~2 s", "for a backup to take over a dead agent's task"],
-              ["17% → 0%", "unsupported claims, fixed team vs Sworn"],
+              ["11% → 0%", "unsupported claims in answers, fixed team vs Sworn"],
             ].map(([n, label], i) => (
               <Reveal key={n} i={i} className="card card-hover p-6 sm:p-8">
                 <p className="serif m-0 text-4xl sm:text-5xl">{n}</p>
