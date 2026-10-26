@@ -8,3 +8,4 @@ wallet.json
 data/wiki-cache.json
 *.zip
 .impeccable/
+.github
