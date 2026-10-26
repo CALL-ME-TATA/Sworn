@@ -139,7 +139,7 @@ class Run:
 
     # ---------- hire ----------
     async def screen(self, agent: dict, role: str):
-        entry = {"asset": agent["asset"], "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
+        entry = {"asset": agent["asset"], "id": agent.get("id", agent["asset"]), "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
                  "stage": "reputation", "result": "checking", "reason": None, "score": None, "ratings": 0}
         self.r["hiring"].append(entry)
 
@@ -258,9 +258,9 @@ class Run:
 
     async def step_retrieve(self):
         if self.kill and not self.killed:  # demo: take the main retriever offline mid-run, so a backup has to take over
-            self.killed = self.team["retriever"][0]["name"]
+            self.killed = self.team["retriever"][0].get("id")  # the URL id the agent server checks
             await store.redis.sadd("agents:killed", self.killed)
-            self.log(f"  [demo] killed {self.killed}")
+            self.log(f"  [demo] killed {self.team['retriever'][0]['name']}")
         for t in self.r["tasks"]:
             if "sources" in t:
                 continue
@@ -356,7 +356,7 @@ class Run:
             self.r["feedback"].append(item)
 
         r = self.r
-        bad = [h for h in r["hiring"] if h["ours"] and h["name"].startswith("bad-")]
+        bad = [h for h in r["hiring"] if h["ours"] and h.get("id", "").startswith("bad-")]
         third = [h for h in r["hiring"] if not h["ours"]]
         r["metrics"] = {
             "claims": len(r["claims"]),

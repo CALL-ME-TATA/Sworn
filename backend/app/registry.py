@@ -1,5 +1,6 @@
 """Discovery, liveness, reputation and feedback for both registries.
 Reads the 8004 indexer and SATI data directly; anything that needs the Solana SDK goes through the registry bridge."""
+import asyncio
 import json
 import re
 
@@ -32,26 +33,46 @@ async def wallets() -> dict:
     return _wallets
 
 
-async def list_agents() -> list[dict]:
-    """Every 8004 agent on devnet, 250 per page (the indexer's cap). Cached in Redis for 10 minutes."""
-    hit = await store.redis.get("registry:agents")
-    if hit:
-        return json.loads(hit)
-    out, skip = [], 0
-    while True:
+async def _indexer_page(skip: int) -> list[dict]:
+    """One page of agents. The indexer allows 60 requests a minute; when it says slow down, wait and retry."""
+    for attempt in range(1, 5):
         res = await _http.post(CONFIG.INDEXER, json={
             "query": f"query($skip: Int) {{ agents(first: 250, skip: $skip, orderBy: createdAt, orderDirection: desc) {{ {AGENT_FIELDS} }} }}",
             "variables": {"skip": skip},
         })
         body = res.json()
-        if body.get("errors"):
-            raise RuntimeError(f"indexer: {body['errors'][0]['message']}")
-        page = body["data"]["agents"]
-        out += page
-        if len(page) < 250:
-            break
-        skip += 250
-    await store.redis.set("registry:agents", json.dumps(out), ex=600)
+        if body.get("data"):
+            return body["data"]["agents"]
+        error = body.get("error") or (body.get("errors") or [{}])[0].get("message") or f"HTTP {res.status_code}"
+        if "rate" not in str(error).lower() or attempt == 4:
+            raise RuntimeError(f"indexer: {error}")
+        await asyncio.sleep(5 * attempt)
+    raise RuntimeError("unreachable")
+
+
+async def list_agents() -> list[dict]:
+    """Every 8004 agent on devnet, 250 per page (the indexer's cap). Cached in Redis for 10 minutes; if the indexer
+    is down or rate-limited, the last full copy is used, so a busy minute never stops a run."""
+    hit = await store.redis.get("registry:agents")
+    if hit:
+        return json.loads(hit)
+    try:
+        out, skip = [], 0
+        while True:
+            page = await _indexer_page(skip)
+            out += page
+            if len(page) < 250:
+                break
+            skip += 250
+    except Exception as err:  # noqa: BLE001
+        last = await store.redis.get("registry:agents:last")
+        if not last:
+            raise
+        print(f"indexer unavailable ({err}); using the last saved agent list")
+        return json.loads(last)
+    body = json.dumps(out)
+    await store.redis.set("registry:agents", body, ex=600)
+    await store.redis.set("registry:agents:last", body)
     return out
 
 
@@ -84,7 +105,8 @@ async def our_candidates(all_agents: list[dict]) -> list[dict]:
             continue  # an old agent we no longer serve
         svc = {s.get("name"): s for s in file.get("services", [])}
         if svc.get("A2A", {}).get("endpoint"):
-            out.append({"asset": asset, "name": file.get("name"), "endpoint": svc["A2A"]["endpoint"],
+            endpoint = svc["A2A"]["endpoint"]
+            out.append({"asset": asset, "id": endpoint.rstrip("/").rsplit("/", 1)[-1], "name": file.get("name"), "endpoint": endpoint,
                         "skills": svc.get("OASF", {}).get("skills", []), "ours": True, "registry": "8004"})
     return out
 
@@ -208,7 +230,7 @@ def registration_file(agent: dict) -> dict:
     endpoint = agent_url(agent["name"])
     return {
         "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-        "name": agent["name"],
+        "name": agent["title"],
         "description": agent["description"],
         "services": [
             {"name": "A2A", "endpoint": endpoint},

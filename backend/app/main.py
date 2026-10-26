@@ -60,7 +60,7 @@ async def agent_card(name: str):
     a = _agent(name)
     if await store.redis.sismember("agents:killed", name):
         return JSONResponse({"error": "agent offline"}, status_code=503)
-    return {"name": a["name"], "role": a["role"], "description": a["description"]}
+    return {"id": a["name"], "name": a["title"], "role": a["role"], "description": a["description"]}
 
 
 @app.post("/agents/{name}")

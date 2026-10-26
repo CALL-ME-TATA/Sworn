@@ -50,17 +50,18 @@ ROLE_SKILLS = {
 }
 ROLES = list(ROLE_SKILLS)
 
-# Our agents. Handlers live in app/agents.py; app/register.py puts them on-chain.
+# Our agents. name is the stable ID: it is in each agent's URL, which is what is registered on-chain, so it never changes.
+# title is what people see (the registration file's name). Handlers live in app/agents.py; app/register.py puts them on-chain.
 AGENT_LIST = [
-    {"name": "planner-a", "role": "planner", "description": "Splits a research question into the sub-questions it needs, each with a focused search query."},
-    {"name": "retriever-a", "role": "retriever", "description": "Fetches the Wikipedia articles most relevant to a sub-question."},
-    {"name": "retriever-b", "role": "retriever", "description": "Backup retriever: fetches relevant Wikipedia articles."},
-    {"name": "reader-a", "role": "reader", "description": "Reads source pages and extracts the sentences that bear on a sub-question, each with its source URL."},
-    {"name": "reasoner-a", "role": "reasoner", "description": "Turns extracted facts into short claims that answer the sub-question, keeping each claim's exact quote."},
-    {"name": "verifier-a", "role": "verifier", "description": "Checks that a quote is on its source page and that it supports the claim."},
-    {"name": "generator-a", "role": "generator", "description": "Writes the final answer from verified claims only, citing each claim ID."},
-    {"name": "bad-liar", "role": "reasoner", "description": "Research reasoner."},   # invents quotes: must fail the trial
-    {"name": "bad-slow", "role": "retriever", "description": "Research retriever."},  # never answers in time: must time out
+    {"name": "planner-a", "title": "Question Planner", "role": "planner", "description": "Splits a research question into the sub-questions it needs, each with a focused search query."},
+    {"name": "retriever-a", "title": "Source Finder", "role": "retriever", "description": "Fetches the Wikipedia articles most relevant to a sub-question."},
+    {"name": "retriever-b", "title": "Source Finder (2)", "role": "retriever", "description": "Backup retriever: fetches relevant Wikipedia articles."},
+    {"name": "reader-a", "title": "Fact Extractor", "role": "reader", "description": "Reads source pages and extracts the sentences that bear on a sub-question, each with its source URL."},
+    {"name": "reasoner-a", "title": "Claim Builder", "role": "reasoner", "description": "Turns extracted facts into short claims that answer the sub-question, keeping each claim's exact quote."},
+    {"name": "verifier-a", "title": "Fact Checker", "role": "verifier", "description": "Checks that a quote is on its source page and that it supports the claim."},
+    {"name": "generator-a", "title": "Answer Writer", "role": "generator", "description": "Writes the final answer from verified claims only, citing each claim ID."},
+    {"name": "bad-liar", "title": "Fake-Quote Bot", "role": "reasoner", "description": "Research reasoner."},   # invents quotes: must fail the trial
+    {"name": "bad-slow", "title": "Slow Bot", "role": "retriever", "description": "Research retriever."},  # never answers in time: must time out
 ]
 
 

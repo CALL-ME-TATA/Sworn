@@ -155,7 +155,7 @@ export default function Landing() {
               <div className="card p-6 sm:p-8">
                 <ol className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
                   {[
-                    ["Run 1", "bad-liar invents a quote and fails its test", "tag-red", "score 0"],
+                    ["Run 1", "Fake-Quote Bot invents a quote and fails its test", "tag-red", "score 0"],
                     ["Run 2", "fails again, another 0 goes on-chain", "tag-red", "score 0"],
                     ["Run 3", "third strike: three low scores on record", "tag-yellow", "warning"],
                     ["Run 4+", "rejected on its record before it is even tested", "tag-gray", "not hired"],

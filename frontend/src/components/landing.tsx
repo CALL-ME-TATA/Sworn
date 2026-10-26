@@ -24,7 +24,7 @@ export function HeroMock() {
             <span className="tag tag-green">supported</span>
           </div>
           <p className="text-[13.5px] text-ink-2">“Penicillin was discovered in 1928 by bacteriologist Alexander Fleming, working at St. Mary&apos;s Hospital in London.”</p>
-          <p className="mt-2 font-mono text-[11.5px] text-muted">ars.usda.gov · found by reasoner-a · checked by verifier-a</p>
+          <p className="mt-2 font-mono text-[11.5px] text-muted">ars.usda.gov · found by Claim Builder · checked by Fact Checker</p>
         </div>
       </div>
     </Window>
@@ -45,7 +45,7 @@ const STEPS = [
   { icon: "shield", title: "Test every one", plain: "Each candidate is checked three ways: its public track record, whether it replies at all, and a test question Sworn already knows the answer to.",
     tech: "On-chain reputation via getSummary (out below 40 after 3 ratings), liveness via isItAlive or a HEAD ping, then a known-answer trial graded by code, not by an LLM." },
   { icon: "bulb", title: "Plan the work", plain: "A planner agent splits your question into the smaller questions it really needs answered.",
-    tech: "planner-a returns 1 to 3 sub-questions, each with a Wikipedia query and a web search query." },
+    tech: "Question Planner returns 1 to 3 sub-questions, each with a Wikipedia query and a web search query." },
   { icon: "search", title: "Research", plain: "One agent finds sources, another reads them, a third writes short claims. Every claim keeps the exact sentence it came from.",
     tech: "retriever (Wikipedia REST + Tavily) → reader (sentence shortlist per page) → reasoner (LLM picks sentences; the quote is kept verbatim)." },
   { icon: "checks", title: "Double-check", plain: "A different agent re-opens each source and confirms the sentence is really there and says what the claim says.",
@@ -102,7 +102,7 @@ export function HowItWorks() {
 /* ---------- screening funnel, from a real run ---------- */
 
 const GATES = [
-  { name: "Track record", detail: "Public score from earlier jobs", left: 5, out: [["bad-slow", "scored 0 over 3 jobs"], ["COLA", "scored 0 over 4 jobs"], ["SOL", "scored 0 over 4 jobs"], ["Pixel", "scored 38.9 over 18 jobs"]] },
+  { name: "Track record", detail: "Public score from earlier jobs", left: 5, out: [["Slow Bot", "scored 0 over 3 jobs"], ["COLA", "scored 0 over 4 jobs"], ["SOL", "scored 0 over 4 jobs"], ["Pixel", "scored 38.9 over 18 jobs"]] },
   { name: "Answers at all", detail: "Its address replies", left: 2, out: [["Xona Agent", "not responding"], ["AgentBox", "not responding"], ["CodeGuardian", "not responding"]] },
   { name: "Test question", detail: "Known answer, graded by code", left: 2, out: [] },
 ];
@@ -127,7 +127,7 @@ export function Screening() {
             <p className="mt-4 mb-0 font-mono text-xs text-muted">{g.left} left <Icon name="arrow" size={12} className="inline align-[-1px]" /></p>
           </div>
         ))}
-        <Stage n="2" label="Hired" sub="retriever-a starts, retriever-b waits as backup" good />
+        <Stage n="2" label="Hired" sub="Source Finder starts, Source Finder (2) waits as backup" good />
       </div>
     </div>
   );
@@ -148,8 +148,8 @@ function Stage({ n, label, sub, good = false }: { n: string; label: string; sub:
 const TRAIL = [
   ["What it says", "Penicillin was discovered in 1928 by bacteriologist Alexander Fleming at St. Mary's Hospital in London.", ""],
   ["Where it says so", "“…discovered in 1928 by bacteriologist Alexander Fleming, working at St. Mary's Hospital in London.”", "ars.usda.gov, word for word"],
-  ["Who found it", "reasoner-a", "after retriever-a fetched the page and reader-a pulled the sentence"],
-  ["Who checked it", "verifier-a", "a different agent, which re-opened the page"],
+  ["Who found it", "Claim Builder", "after Source Finder fetched the page and Fact Extractor pulled the sentence"],
+  ["Who checked it", "Fact Checker", "a different agent, which re-opened the page"],
   ["Public record", "Score for each of them on Solana", "anyone can look it up in Solana Explorer"],
 ] as const;
 
@@ -173,10 +173,10 @@ export function TrustTrail() {
 
 export function Failover() {
   const events = [
-    ["0.00 s", "retriever-b gets the task", "tag-gray", "assigned"],
+    ["0.00 s", "Source Finder (2) gets the task", "tag-gray", "assigned"],
     ["0.01 s", "It doesn't reply", "tag-red", "offline"],
     ["0.01 s", "Marked dead, never called again this run", "tag-red", "removed"],
-    ["1.82 s", "retriever-a, already tested, finishes the task", "tag-green", "took over"],
+    ["1.82 s", "Source Finder, already tested, finishes the task", "tag-green", "took over"],
   ] as const;
   return (
     <div className="card p-6 sm:p-8">
