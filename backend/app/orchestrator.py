@@ -70,8 +70,10 @@ async def post(endpoint: str, body: dict, timeout: float) -> dict:
         except Exception:  # noqa: BLE001
             detail = "rate limited"
         raise AgentBusy(detail)
-    if res.status_code >= 500 or res.status_code == 404:
-        raise AgentError(f"HTTP {res.status_code}", True)
+    if 300 <= res.status_code < 400:  # an agent's registered address must answer itself, not send us elsewhere
+        raise AgentError(f"HTTP {res.status_code} redirect (agent moved)", True)
+    if res.status_code >= 500 or res.status_code in (404, 410):  # 410: the agent has moved or shut down
+        raise AgentError("HTTP 410 gone (agent moved or shut down)" if res.status_code == 410 else f"HTTP {res.status_code}", True)
     if res.status_code >= 400:
         raise AgentError(f"HTTP {res.status_code}", False)
     try:
@@ -158,7 +160,7 @@ class Run:
 
     # ---------- hire ----------
     async def screen(self, agent: dict, role: str):
-        entry = {"asset": agent["asset"], "id": agent.get("id", agent["asset"]), "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
+        entry = {"asset": agent["asset"], "id": agent.get("id", agent["asset"]), "protocol": agent.get("protocol", "a2a"), "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
                  "stage": "reputation", "result": "checking", "reason": None, "score": None, "ratings": 0}
         self.r["hiring"].append(entry)
 
@@ -178,6 +180,14 @@ class Run:
         await self.save()
         if not await is_alive(agent):
             return reject("alive", "endpoint not responding", "dead")
+
+        if agent.get("protocol") == "mcp":
+            # A live MCP server, but Sworn hands out work in its own task format and does not call MCP tools yet.
+            # Not the agent's fault, so no on-chain score; it is shown with the tools it does offer.
+            tools = [t.get("name", "?") for t in agent.get("tools") or []]
+            entry["tools"] = tools[:12]
+            return reject("trial", f"live MCP server with {len(tools)} tools ({', '.join(tools[:3])}{', …' if len(tools) > 3 else ''}); "
+                                   "none takes a Sworn task, so it can't do this job")
 
         entry["stage"] = "trial"
         await self.save()

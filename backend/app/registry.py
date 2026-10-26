@@ -124,8 +124,13 @@ def sati_candidates() -> list[dict]:
         if a["endpoint"] not in seen:
             seen.add(a["endpoint"])
             out.append({"asset": a["mint"], "name": a.get("name") or a["mint"][:8], "endpoint": a["endpoint"],
+                        "protocol": "mcp" if a.get("type") == "MCP" else "a2a",
                         "skills": a.get("skills", []), "ours": False, "registry": "sati"})
-    return sorted(out, key=lambda a: bool(re.search(r"example\.com|myagent\.com", a["endpoint"])))
+    return sorted(out, key=lambda a: bool(UNREACHABLE.search(a["endpoint"])))
+
+
+# Addresses nobody else can reach, or template placeholders: not worth a candidate slot.
+UNREACHABLE = re.compile(r"localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.|example\.(com|org)|myagent\.com|your-?domain")
 
 
 async def discover(role: str) -> list[dict]:
@@ -136,15 +141,24 @@ async def discover(role: str) -> list[dict]:
     matches = lambda skills: bool(wanted & set(skills or []))  # noqa: E731
     ours = [c for c in await our_candidates(all_agents) if matches(c["skills"])]
     owner = (await wallets()).get("owner")
-    theirs = [{"asset": a["id"], "name": (a["registrationFile"] or {}).get("name") or a["id"][:8],
-               "endpoint": a["registrationFile"]["a2aEndpoint"], "skills": a["registrationFile"].get("oasfSkills") or [],
-               "ours": False, "registry": "8004"}
-              for a in all_agents if a["owner"] != owner and (a.get("registrationFile") or {}).get("a2aEndpoint")]
+    theirs = []
+    for a in all_agents:
+        f = a.get("registrationFile") or {}
+        endpoint, protocol = (f.get("a2aEndpoint"), "a2a") if f.get("a2aEndpoint") else (f.get("mcpEndpoint"), "mcp")
+        if a["owner"] != owner and endpoint:  # MCP-only agents count too
+            theirs.append({"asset": a["id"], "name": f.get("name") or a["id"][:8], "endpoint": endpoint, "protocol": protocol,
+                           "skills": f.get("oasfSkills") or [], "ours": False, "registry": "8004"})
     sati = sati_candidates()
     extra = []
     if role == "retriever":
-        extra = [t for t in theirs if not matches(t["skills"])][:CONFIG.THIRD_PARTY_RETRIEVERS] + \
-                [t for t in sati if not matches(t["skills"])][:CONFIG.SATI_RETRIEVERS]
+        def reachable(pool, n):  # one candidate per address, and none that nobody could reach
+            seen, picked = set(), []
+            for t in pool:
+                if not matches(t["skills"]) and not UNREACHABLE.search(t["endpoint"]) and t["endpoint"] not in seen:
+                    seen.add(t["endpoint"])
+                    picked.append(t)
+            return picked[:n]
+        extra = reachable(theirs, CONFIG.THIRD_PARTY_RETRIEVERS) + reachable(sati, CONFIG.SATI_RETRIEVERS)
     return (ours + [t for t in theirs if matches(t["skills"])] + [t for t in sati if matches(t["skills"])] + extra)[:CONFIG.MAX_CANDIDATES]
 
 
@@ -172,9 +186,36 @@ async def ping(url: str) -> bool:
         return False
 
 
+async def mcp_tools(url: str) -> list[dict] | None:
+    """MCP handshake (initialize, then tools/list). Returns the server's tools, or None if it is not a working MCP server.
+    MCP servers reject the HEAD request a plain ping sends, so this is how an MCP agent's liveness is checked."""
+    headers = {"accept": "application/json, text/event-stream"}
+
+    def body(res) -> dict:  # plain JSON, or one server-sent event carrying it
+        m = re.search(r"\{.*\}", res.text, re.S)
+        return json.loads(m.group(0)) if m else {}
+
+    try:
+        res = await _http.post(url, headers=headers, timeout=CONFIG.ALIVE_TIMEOUT, json={
+            "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "sworn", "version": "0.2"}}})
+        if res.status_code != 200 or "result" not in body(res):
+            return None
+        if res.headers.get("mcp-session-id"):
+            headers["mcp-session-id"] = res.headers["mcp-session-id"]
+        await _http.post(url, headers=headers, timeout=CONFIG.ALIVE_TIMEOUT, json={"jsonrpc": "2.0", "method": "notifications/initialized"})
+        res = await _http.post(url, headers=headers, timeout=CONFIG.ALIVE_TIMEOUT, json={"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+        return (body(res).get("result") or {}).get("tools", [])
+    except Exception:  # noqa: BLE001
+        return None
+
+
 async def is_alive(c: dict) -> bool:
-    """The SDK's isItAlive pings the services in the on-chain profile. It refuses localhost and cannot check
-    SATI assets, so then we ping the endpoint ourselves."""
+    """MCP servers get a real MCP handshake. Otherwise the SDK's isItAlive pings the services in the on-chain
+    profile; it refuses localhost and cannot check SATI assets, so then we ping the endpoint ourselves."""
+    if c.get("protocol") == "mcp":
+        c["tools"] = await mcp_tools(c["endpoint"])
+        return c["tools"] is not None
     if c["registry"] == "8004" and not c["asset"].startswith("unregistered"):
         try:
             if (await bridge("GET", f"/alive/{c['asset']}"))["status"] not in ("not_live", "unknown"):

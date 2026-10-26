@@ -11,11 +11,16 @@ export function Asset({ asset }: { asset?: string }) {
   );
 }
 
-export function Origin({ h }: { h: Partial<Hiring> }) {
+export function Origin({ h }: { h: Partial<Hiring> & { protocol?: string } }) {
   if (h.ours) return <span className="tag tag-gray" title="Registered by our team">ours</span>;
-  return h.registry === "sati"
-    ? <span className="tag tag-blue" title="Third-party agent from the SATI registry">SATI</span>
-    : <span className="tag tag-blue" title="Third-party agent from the Solana Agent Registry (8004)">8004</span>;
+  return (
+    <>
+      {h.registry === "sati"
+        ? <span className="tag tag-blue" title="Third-party agent from the SATI registry">SATI</span>
+        : <span className="tag tag-blue" title="Third-party agent from the Solana Agent Registry (8004)">8004</span>}
+      {h.protocol === "mcp" && <span className="tag tag-gray" title="Lists an MCP server (a set of tools) rather than a task endpoint">MCP</span>}
+    </>
+  );
 }
 
 export function Rating({ h }: { h: Partial<Hiring> }) {

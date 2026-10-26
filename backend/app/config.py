@@ -22,7 +22,7 @@ class CONFIG:
     TASK_TIMEOUT = 30.0
     BREAKER_FAILS = 3          # consecutive bad replies before an agent is marked dead
     SUBQUESTIONS = 3
-    THIRD_PARTY_RETRIEVERS = 3  # real 8004 registry agents from other people, trialled as retrievers
+    THIRD_PARTY_RETRIEVERS = 5  # real 8004 registry agents from other people, one per reachable address
     SATI_RETRIEVERS = 3         # and the same from the SATI registry
     FEEDBACK_CONCURRENCY = int(os.getenv("FEEDBACK_CONCURRENCY", "1"))  # on-chain score writes in flight at once
     SATI_FEEDBACK = os.getenv("SATI_FEEDBACK") == "on"  # write scores to SATI too (through SATI's public API)
