@@ -1,205 +1,242 @@
-"use client";
+import Link from "next/link";
+import { Architecture, Failover, Faq, HeroMock, HowItWorks, Screening, StateMachine, TrustTrail } from "@/components/landing";
+import { Icon, Reveal, Wordmark } from "@/components/ui";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { HiringView } from "@/components/Hiring";
-import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, History, Record, Registries, Scoreline, Steps } from "@/components/Views";
-import { askClarify, getJson, postJson, seconds, type Clarify, type Compare, type Run } from "@/lib/run";
-
-const EXAMPLES = [
-  "How was penicillin discovered and why did it matter?",
-  "What causes coral bleaching and where has it happened?",
-  "How do vaccines train the immune system?",
-];
-
-type ClarifyBox = null | "checking" | { c: Extract<Clarify, { clear: false }>; question: string };
-
-function useHash() {
-  const [hash, setHash] = useState("");
-  useEffect(() => {
-    const read = () => setHash(location.hash.slice(1));
-    read();
-    window.addEventListener("hashchange", read);
-    return () => window.removeEventListener("hashchange", read);
-  }, []);
-  return hash;
+function Section({ id, children, tone = "canvas", className = "" }: { id?: string; children: React.ReactNode; tone?: "canvas" | "bone"; className?: string }) {
+  return (
+    <section id={id} className={`relative z-10 scroll-mt-16 px-5 py-24 sm:px-8 sm:py-32 ${tone === "bone" ? "border-y border-line bg-bone" : ""} ${className}`}>
+      <div className="mx-auto max-w-6xl">{children}</div>
+    </section>
+  );
 }
 
-export default function Page() {
-  const [run, setRun] = useState<Run | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [waitingFor, setWaitingFor] = useState<string | null>(null); // run_id that was latest when we started a new run
-  const [viewing, setViewing] = useState<string | null>(null);       // a past run picked from History
-  const [compare, setCompare] = useState<Compare | null>(null);
-  const [question, setQuestion] = useState("");
-  const [kill, setKill] = useState(false);
-  const [clarify, setClarify] = useState<ClarifyBox>(null);
-  const [notice, setNotice] = useState("");
-  const input = useRef<HTMLInputElement>(null);
-  const hash = useHash();
+function Heading({ eyebrow, title, children }: { eyebrow: string; title: string; children?: React.ReactNode }) {
+  return (
+    <Reveal className="mb-12 max-w-3xl sm:mb-16">
+      <p className="eyebrow mb-4">{eyebrow}</p>
+      <h2 className="serif m-0 text-4xl sm:text-5xl">{title}</h2>
+      {children && <p className="mt-5 mb-0 text-lg text-muted">{children}</p>}
+    </Reveal>
+  );
+}
 
-  const load = useCallback(async () => {
-    const [status, r] = await Promise.all([
-      getJson<{ running: boolean }>("/api/status"),
-      getJson<Run>(viewing ? `/api/runs/${viewing}` : "/api/runs/latest"),
-    ]);
-    setRunning(Boolean(status?.running));
-    setLoaded(true);
-    if (r && waitingFor && r.run_id !== waitingFor) setWaitingFor(null);
-    if (r) setRun(r);
-    return { busy: Boolean(status?.running) || Boolean(waitingFor) || Boolean(r && !r.finished_at) };
-  }, [viewing, waitingFor]);
+const STACK = [
+  ["Frontend", "Next.js, TypeScript, Tailwind CSS"],
+  ["Agents", "Python, FastAPI, LangGraph"],
+  ["Blockchain", "Solana devnet, @solana/web3.js, 8004-solana SDK"],
+  ["Data", "PostgreSQL, Redis"],
+  ["AI and sources", "Groq (gpt-oss-120b), Wikipedia, Tavily"],
+  ["Ops", "Docker Compose, GitHub Actions, Prometheus"],
+];
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    let alive = true;
-    const tick = async () => {
-      const { busy } = await load();
-      if (alive && busy && !viewing) timer = setTimeout(tick, 1200);
-    };
-    tick();
-    return () => { alive = false; clearTimeout(timer); };
-  }, [load, viewing]);
-
-  useEffect(() => { getJson<Compare>("/api/compare").then(setCompare); }, []);
-
-  async function startRun(q: string) {
-    setClarify(null);
-    setQuestion(q);
-    setViewing(null);
-    const res = await postJson("/api/run", { question: q, kill });
-    if (!res.ok) {
-      setNotice((await res.json().catch(() => ({})))?.detail ?? `Could not start the run (HTTP ${res.status}). Is the backend running?`);
-      return;
-    }
-    setNotice("");
-    setWaitingFor(run?.run_id ?? "none");
-    history.replaceState(null, "", location.pathname); // a new run starts on its default tab
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
-    window.scrollTo({ top: 0 });
-  }
-
-  // Run button: check the question first; only an unclear question stops to ask.
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    const q = question.trim();
-    if (!q || running) return;
-    setClarify("checking");
-    const c = await askClarify(q, false);
-    if (c.clear) return startRun(q);
-    setClarify({ c, question: q });
-  }
-
-  const [tabId, claimTarget] = hash.split("/");
-  const r = waitingFor ? null : run;
-  const done = Boolean(r?.finished_at);
-  const tabs = r ? [
-    { id: "answer", label: "Answer" },
-    { id: "evidence", label: "Evidence", count: r.claims.length || null },
-    { id: "hiring", label: "Hiring", count: r.hiring.length ? `${r.hiring.filter((h) => h.result === "failed").length} out` : null },
-    { id: "record", label: "On-chain record", count: r.feedback.length ? r.feedback.filter((f) => f.tx).length : null },
-    { id: "registries", label: "Registries" },
-    { id: "baseline", label: "Fixed team vs ours" },
-    { id: "history", label: "History" },
-  ] : [];
-  const tab = tabs.find((t) => t.id === tabId)?.id ?? (done ? "answer" : "hiring");
-
+export default function Landing() {
   return (
     <>
-      <header className="bar">
-        <div className="font-display text-[22px] leading-none font-extrabold tracking-[.02em] whitespace-nowrap uppercase">
-          Sworn <span className="font-semibold text-on-ink">· Trusted Agent Hiring</span>
-        </div>
-        <form onSubmit={submit} className="flex min-w-0 gap-2">
-          <input
-            ref={input} type="text" value={question} onChange={(e) => setQuestion(e.target.value)}
-            aria-label="Research question" placeholder="Ask a research question" required maxLength={300} autoComplete="off"
-            className="h-[46px] min-w-0 flex-1 border-2 border-transparent bg-sheet px-4 text-[17px] font-medium text-ink placeholder:text-ink-3 focus-visible:border-blue focus-visible:outline-none"
-          />
-          <button
-            type="submit" disabled={running}
-            className="h-[46px] border-2 border-sheet bg-ink px-6 font-display text-[19px] font-extrabold tracking-[.08em] text-sheet uppercase transition-colors hover:bg-sheet hover:text-ink active:translate-y-px disabled:cursor-progress disabled:border-ink-3 disabled:bg-ink disabled:text-on-ink"
-          >
-            {running ? "Running" : "Run"}
-          </button>
-        </form>
-        <label className="kill flex cursor-pointer items-center gap-2 border-l border-[#3a3e46] pl-6 select-none"
-          title="Demo of failover: takes the main retriever offline mid-run so a backup has to take over. It is switched back on when the run ends.">
-          <input type="checkbox" checked={kill} onChange={(e) => setKill(e.target.checked)} />
-          <span className="box" aria-hidden="true">
-            <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="#fbfbf8" strokeWidth="2.4" strokeLinecap="square" /></svg>
-          </span>
-          <span className="lbl font-display text-base leading-tight font-bold tracking-[.04em] text-[#ff8a84] uppercase">Kill main retriever<br />mid-run</span>
-        </label>
+      <div className="ambient" aria-hidden />
+
+      <header className="sticky top-0 z-30 border-b border-line bg-canvas/80 backdrop-blur-md">
+        <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 px-5 sm:px-8" aria-label="Main">
+          <Wordmark />
+          <div className="hidden items-center gap-7 text-sm text-muted md:flex">
+            <a className="no-underline hover:text-ink" href="#how">How it works</a>
+            <a className="no-underline hover:text-ink" href="#trust">Proof</a>
+            <a className="no-underline hover:text-ink" href="#engineers">For engineers</a>
+            <a className="no-underline hover:text-ink" href="#faq">FAQ</a>
+          </div>
+          <Link href="/app" className="btn btn-dark no-underline">Try Sworn <Icon name="arrow" size={15} /></Link>
+        </nav>
       </header>
 
-      {r && (
-        <div className="viewbar">
-          <nav className="tabs mx-auto flex max-w-[1440px] overflow-x-auto px-6 [scrollbar-width:none]" aria-label="Views">
-            {tabs.map((t) => (
-              <a key={t.id} href={`#${t.id}`} aria-current={t.id === tab ? "page" : undefined}>
-                {t.label}{t.count != null && <span className="count">{t.count}</span>}
-              </a>
+      <main>
+        {/* hero */}
+        <section className="relative z-10 px-5 pt-20 pb-24 sm:px-8 sm:pt-28 sm:pb-32">
+          <div className="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <Reveal>
+              <p className="eyebrow mb-6">Built on the Solana Agent Registry</p>
+              <h1 className="serif m-0 text-[clamp(44px,6.4vw,76px)]">
+                Hire AI agents you can <em className="italic">actually</em> trust.
+              </h1>
+              <p className="mt-7 mb-0 max-w-lg text-lg text-muted">
+                Sworn builds a research team from public directories of AI agents. It tests every agent before it works,
+                checks every claim it makes against the source, and records how each one did where anyone can see it.
+              </p>
+              <div className="mt-10 flex flex-wrap gap-3">
+                <Link href="/app" className="btn btn-dark no-underline">Ask a question <Icon name="arrow" size={15} /></Link>
+                <a href="#how" className="btn btn-ghost no-underline">See how it works</a>
+              </div>
+              <p className="mt-8 mb-0 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted">
+                <span className="flex items-center gap-1.5"><Icon name="check" size={15} className="text-green" />Every claim cited</span>
+                <span className="flex items-center gap-1.5"><Icon name="check" size={15} className="text-green" />Checked by a second agent</span>
+                <span className="flex items-center gap-1.5"><Icon name="check" size={15} className="text-green" />Scores on-chain</span>
+              </p>
+            </Reveal>
+            <Reveal i={2}><HeroMock /></Reveal>
+          </div>
+        </section>
+
+        {/* problem */}
+        <Section tone="bone">
+          <Heading eyebrow="The problem" title="Anyone can list an AI agent. Almost nobody checks them.">
+            Open agent registries are a great idea: a public phone book of AI agents anyone can hire. But a listing proves
+            nothing. Most entries can&apos;t even be reached, and the ones that can might simply make things up.
+          </Heading>
+          <div className="grid gap-4 md:grid-cols-6">
+            <Reveal className="card card-hover p-8 md:col-span-3" i={0}>
+              <p className="serif m-0 text-6xl">86 <span className="text-3xl text-muted">of 4,829</span></p>
+              <p className="mt-4 mb-0 text-ink">agents in the Solana Agent Registry list an address you can actually call.</p>
+              <div className="mt-6 h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label="86 of 4,829 is under 2 percent">
+                <div className="h-full rounded-full bg-ink" style={{ width: "1.8%" }} />
+              </div>
+              <p className="mt-2 mb-0 font-mono text-xs text-muted">1.8% reachable · Solana devnet</p>
+            </Reveal>
+            <Reveal className="card card-hover p-8 md:col-span-3" i={1}>
+              <p className="serif m-0 text-6xl">31 <span className="text-3xl text-muted">of 122</span></p>
+              <p className="mt-4 mb-0 text-ink">agents in the SATI registry list an endpoint, and most of those are template placeholders.</p>
+              <div className="mt-6 h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label="31 of 122 is 25 percent">
+                <div className="h-full rounded-full bg-ink" style={{ width: "25%" }} />
+              </div>
+              <p className="mt-2 mb-0 font-mono text-xs text-muted">25% list an endpoint · read from the chain</p>
+            </Reveal>
+            <Reveal className="card card-hover flex flex-col justify-between gap-6 p-8 md:col-span-2" i={0}>
+              <span className="tag tag-red self-start">turned away</span>
+              <p className="m-0"><span className="serif text-5xl">0 of 6</span><br /><span className="text-muted">outside agents passed Sworn&apos;s checks in a recent run.</span></p>
+            </Reveal>
+            <Reveal className="card card-hover p-8 md:col-span-4" i={1}>
+              <p className="eyebrow mb-3">So Sworn treats every agent like a new hire</p>
+              <p className="serif m-0 text-3xl">Check the references. Hold a test. Watch the work. Write a review.</p>
+              <p className="mt-4 mb-0 text-muted">That is the whole idea, done automatically, every time you ask a question.</p>
+            </Reveal>
+          </div>
+        </Section>
+
+        {/* how it works */}
+        <Section id="how"><HowItWorks /></Section>
+
+        {/* screening */}
+        <Section tone="bone">
+          <Heading eyebrow="Before anyone works" title="Three checks. Fail one and you're out.">
+            This is a real hiring round from Solana devnet: nine candidates applied to be the retriever, and only two were hired.
+          </Heading>
+          <Reveal><Screening /></Reveal>
+          <p className="mt-5 mb-0 text-sm text-muted">The same checks run for all six jobs: planner, retriever, reader, reasoner, verifier and generator.</p>
+        </Section>
+
+        {/* trust trail */}
+        <Section id="trust">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+            <Reveal className="lg:sticky lg:top-28 lg:self-start">
+              <p className="eyebrow mb-4">The proof</p>
+              <h2 className="serif m-0 text-4xl sm:text-5xl">Every sentence comes with its receipts.</h2>
+              <p className="mt-5 mb-0 text-muted">
+                Click any citation in an answer and you see the exact sentence it came from, the page, the agent that found it,
+                and the different agent that confirmed it. If nobody could confirm a claim, it isn&apos;t in your answer.
+              </p>
+            </Reveal>
+            <TrustTrail />
+          </div>
+        </Section>
+
+        {/* failover + reputation */}
+        <Section tone="bone">
+          <Heading eyebrow="When things go wrong" title="Agents fail. The job doesn't." />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Reveal className="flex flex-col gap-5">
+              <div>
+                <h3 className="m-0 text-lg font-medium text-ink">A backup takes over in about two seconds</h3>
+                <p className="mt-2 mb-0 text-muted">From a real run where we switched off the main retriever on purpose.</p>
+              </div>
+              <Failover />
+            </Reveal>
+            <Reveal i={1} className="flex flex-col gap-5">
+              <div>
+                <h3 className="m-0 text-lg font-medium text-ink">Bad agents get filtered out for good</h3>
+                <p className="mt-2 mb-0 text-muted">Scores go on-chain after every run, so a bad agent stops getting hired.</p>
+              </div>
+              <div className="card p-6 sm:p-8">
+                <ol className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
+                  {[
+                    ["Run 1", "bad-liar invents a quote and fails its test", "tag-red", "score 0"],
+                    ["Run 2", "fails again, another 0 goes on-chain", "tag-red", "score 0"],
+                    ["Run 3", "third strike: three low scores on record", "tag-yellow", "warning"],
+                    ["Run 4+", "rejected on its record before it is even tested", "tag-gray", "not hired"],
+                  ].map(([run, what, tag, label]) => (
+                    <li key={run} className="rounded-lg border border-line bg-bone/50 p-4">
+                      <div className="mb-2 flex items-center justify-between"><span className="font-mono text-xs text-muted">{run}</span><span className={`tag ${tag}`}>{label}</span></div>
+                      <p className="m-0 text-sm text-ink">{what}</p>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </Reveal>
+          </div>
+        </Section>
+
+        {/* engineers */}
+        <Section id="engineers">
+          <Heading eyebrow="For engineers" title="Under the hood.">
+            Off-chain agents, on-chain trust. The orchestrator is a LangGraph state machine; every agent, ours or a stranger&apos;s,
+            is reached the same way: over HTTP, after screening.
+          </Heading>
+          <Reveal><Architecture /></Reveal>
+          <Reveal className="mt-4"><StateMachine /></Reveal>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {STACK.map(([k, v], i) => (
+              <Reveal key={k} i={i % 3} className="card p-6">
+                <p className="eyebrow mb-2">{k}</p>
+                <p className="m-0 text-ink">{v}</p>
+              </Reveal>
             ))}
-          </nav>
-        </div>
-      )}
+          </div>
+        </Section>
 
-      <main className="mx-auto max-w-[1440px] px-6 pt-8 pb-[72px] max-md:px-4">
-        <div aria-live="polite">
-          {clarify === "checking" && <div className="clarify"><p className="m-0 label-caps text-lg text-blue">Checking the question...</p></div>}
-          {clarify && clarify !== "checking" && <section className="clarify"><ClarifyOptions c={clarify.c} question={clarify.question} onRun={startRun} /></section>}
-        </div>
+        {/* results */}
+        <Section tone="bone">
+          <Heading eyebrow="Measured on devnet" title="What it does, in numbers." />
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {[
+              ["100%", "of claims carry their source, quote and agent IDs"],
+              ["2 of 2", "deliberately bad agents rejected, every run"],
+              ["~2 s", "for a backup to take over a dead agent's task"],
+              ["17% → 0%", "unsupported claims, fixed team vs Sworn"],
+            ].map(([n, label], i) => (
+              <Reveal key={n} i={i} className="card card-hover p-6 sm:p-8">
+                <p className="serif m-0 text-4xl sm:text-5xl">{n}</p>
+                <p className="mt-3 mb-0 text-sm text-muted">{label}</p>
+              </Reveal>
+            ))}
+          </div>
+        </Section>
 
-        <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 font-medium text-ink-2" role="status" aria-live="polite">
-          {notice ? <span className="text-red">{notice}</span>
-            : waitingFor ? <><span className="label-caps bg-blue px-2.5 pt-[5px] pb-1 text-base text-sheet">Starting</span> Reading the registries and screening candidates...</>
-            : !loaded ? "Loading the latest run..."
-            : r && <>
-              {done ? <b className="label-caps text-base text-ink">{r.error ? "Stopped" : "Finished"}</b> : <span className="label-caps bg-blue px-2.5 pt-[5px] pb-1 text-base text-sheet">Running</span>}
-              <span>{done ? `took ${seconds(r.started_at, r.finished_at!)} s · ${new Date(r.finished_at!).toLocaleString()}` : `started ${new Date(r.started_at).toLocaleTimeString()}`}</span>
-              <span>{r.mode}</span> <code>{r.run_id}</code>
-              {viewing && <button type="button" className="linkish" onClick={() => setViewing(null)}>Back to the latest run</button>}
-            </>}
-        </div>
+        {/* faq */}
+        <Section id="faq">
+          <div className="grid gap-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-16">
+            <Reveal>
+              <p className="eyebrow mb-4">Questions</p>
+              <h2 className="serif m-0 text-4xl sm:text-5xl">Things people ask.</h2>
+            </Reveal>
+            <Reveal i={1}><Faq /></Reveal>
+          </div>
+        </Section>
 
-        {loaded && !r && !waitingFor && (
-          <section className="border-t-[6px] border-ink bg-sheet p-8">
-            <h1 className="m-0 mb-3 max-w-[20ch] font-display text-[clamp(34px,4.4vw,56px)] leading-none font-extrabold uppercase">Hire agents you can trust</h1>
-            <p className="mb-6 max-w-[62ch] text-[19px] text-ink-2">
-              Every candidate from the open Solana registries is screened on its on-chain reputation, whether it is alive, and a known-answer trial.
-              Only survivors are hired, every claim is checked by a different agent, and every agent&apos;s score goes back on-chain.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLES.map((q) => (
-                <button key={q} type="button" onClick={() => { setQuestion(q); input.current?.focus(); }}
-                  className="cursor-pointer border-2 border-ink px-3 py-2 text-left font-semibold hover:bg-ink hover:text-sheet">{q}</button>
-              ))}
+        {/* cta */}
+        <Section tone="bone" className="text-center">
+          <Reveal className="mx-auto max-w-2xl">
+            <h2 className="serif m-0 text-4xl sm:text-6xl">Ask something. Check everything.</h2>
+            <p className="mt-6 mb-0 text-lg text-muted">Watch the hiring happen live, then open the proof behind every sentence.</p>
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
+              <Link href="/app" className="btn btn-dark no-underline">Open Sworn <Icon name="arrow" size={15} /></Link>
+              <a href="https://github.com/CALL-ME-TATA/vvce-hackathon" className="btn btn-ghost no-underline" target="_blank" rel="noopener">Source code</a>
             </div>
-          </section>
-        )}
-
-        {r && (
-          <>
-            <Steps r={r} />
-            <h1 className={`m-0 font-display leading-[1.02] font-extrabold uppercase [text-wrap:balance] ${done ? "mb-6 max-w-[40ch] text-[clamp(30px,3.6vw,48px)]" : "mb-3 text-[clamp(24px,2.4vw,32px)]"}`}>{r.question}</h1>
-            <section className="view" aria-label={tabs.find((t) => t.id === tab)?.label}>
-              {tab === "answer" && (
-                <div className="mt-6">
-                  <Answer r={r} />
-                  {done && !r.error && <><Scoreline r={r} /><FollowUp key={r.run_id} r={r} onRun={startRun} /></>}
-                </div>
-              )}
-              {tab === "evidence" && <Evidence r={r} target={claimTarget} />}
-              {tab === "hiring" && <HiringView r={r} />}
-              {tab === "record" && <Record r={r} />}
-              {tab === "registries" && <Registries r={r} />}
-              {tab === "baseline" && <Baseline compare={compare} />}
-              {tab === "history" && <History current={r.run_id} onPick={(id) => { setViewing(id); location.hash = "answer"; }} />}
-            </section>
-          </>
-        )}
+          </Reveal>
+        </Section>
       </main>
+
+      <footer className="relative z-10 px-5 py-10 sm:px-8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 text-sm text-muted">
+          <Wordmark small />
+          <span>Team Dancing Burgers · VVCE Hack Day 2026 · Solana devnet</span>
+        </div>
+      </footer>
     </>
   );
 }

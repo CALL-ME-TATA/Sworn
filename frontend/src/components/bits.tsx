@@ -4,39 +4,35 @@ import { explorer, type Hiring } from "@/lib/run";
 export function Asset({ asset }: { asset?: string }) {
   if (!asset || asset.startsWith("unregistered")) return null;
   return (
-    <a href={explorer("address", asset)} target="_blank" rel="noopener" title={`On-chain identity ${asset} (opens Solana Explorer)`}>
-      <code>{asset.slice(0, 6)}…</code>
+    <a href={explorer("address", asset)} target="_blank" rel="noopener" title={`On-chain identity ${asset} (opens Solana Explorer)`}
+      className="font-mono text-[11.5px] text-muted">
+      {asset.slice(0, 6)}…
     </a>
   );
 }
 
-export function PlayerMeta({ h }: { h: Partial<Hiring> }) {
-  const rating = h.score != null ? `${h.score} avg · ${h.ratings} rating${h.ratings === 1 ? "" : "s"}` : "no ratings yet";
-  const [cls, label, tip] = h.ours
-    ? ["", "Ours", "Registered by our team"]
-    : h.registry === "sati"
-      ? ["third", "SATI", "Third-party agent from the SATI registry (cascade-protocol/sati)"]
-      : ["third", "Third-party", "Third-party agent from the Solana Agent Registry (8004)"];
+export function Origin({ h }: { h: Partial<Hiring> }) {
+  if (h.ours) return <span className="tag tag-gray" title="Registered by our team">ours</span>;
+  return h.registry === "sati"
+    ? <span className="tag tag-blue" title="Third-party agent from the SATI registry">SATI</span>
+    : <span className="tag tag-blue" title="Third-party agent from the Solana Agent Registry (8004)">8004</span>;
+}
+
+export function Rating({ h }: { h: Partial<Hiring> }) {
+  return <span className="text-[13px] text-muted">{h.score != null ? `${h.score} avg · ${h.ratings} rating${h.ratings === 1 ? "" : "s"}` : "no ratings yet"}</span>;
+}
+
+export function Title({ children, note }: { children: React.ReactNode; note?: React.ReactNode }) {
   return (
-    <>
-      <span className={`tag ${cls}`} title={tip}>{label}</span>
-      <span>{rating}</span>
-      <Asset asset={h.asset} />
-    </>
+    <div className="mb-6">
+      <h2 className="serif m-0 text-3xl">{children}</h2>
+      {note && <p className="mt-2 mb-0 max-w-2xl text-sm text-muted">{note}</p>}
+    </div>
   );
 }
 
-export function H2({ children, note, id }: { children: React.ReactNode; note?: React.ReactNode; id?: string }) {
-  return (
-    <h2 className="h2" id={id}>
-      {children}
-      {note && <small>{note}</small>}
-    </h2>
-  );
+export function Empty({ children }: { children: React.ReactNode }) {
+  return <div className="card px-6 py-10 text-center text-muted">{children}</div>;
 }
 
-export const SwapIcon = () => (
-  <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true">
-    <path d="M1 7h14M10 2l5 5-5 5" fill="none" stroke="currentColor" strokeWidth="2.2" />
-  </svg>
-);
+export const verdictTag = (s: string) => (s === "supported" ? "tag-green" : s === "pending" ? "tag-yellow" : "tag-red");

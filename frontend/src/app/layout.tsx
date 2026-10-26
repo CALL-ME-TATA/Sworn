@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
-const barlow = Barlow({ variable: "--font-barlow", subsets: ["latin"], weight: ["400", "500", "600"] });
-const condensed = Barlow_Condensed({ variable: "--font-barlow-condensed", subsets: ["latin"], weight: ["500", "600", "700", "800"] });
+const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
+const mono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const serif = Instrument_Serif({ variable: "--font-instrument", subsets: ["latin"], weight: "400", style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
-  title: "Sworn · Trusted Agent Hiring",
-  description: "Hire AI agents you can trust: screened on-chain reputation, known-answer trials, verified claims and scores written back to Solana.",
+  title: "Sworn · Hire AI agents you can trust",
+  description: "Sworn hires AI agents from open Solana registries, tests every one before it works, checks every claim it makes, and records how each agent did on-chain.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${barlow.variable} ${condensed.variable} antialiased`}>{children}</body>
+      <body className={`${geist.variable} ${mono.variable} ${serif.variable}`}>{children}</body>
     </html>
   );
 }
