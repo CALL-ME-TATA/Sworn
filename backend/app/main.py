@@ -15,7 +15,7 @@ from .agents import HANDLERS
 from .llm import ProviderLimit
 from .config import AGENT_LIST, CONFIG, DATA, LENGTHS, REASONING
 from .orchestrator import clarify, run
-from .registry import bridge, list_agents, registration_file, wallets
+from .registry import bridge, list_agents, registration_file, registry_stats, wallets
 from .sources import seed_cache
 
 BY_NAME = {a["name"]: a for a in AGENT_LIST}
@@ -229,6 +229,15 @@ async def benchmark(bench_id: int):
     if not b:
         raise HTTPException(404, "unknown benchmark")
     return b
+
+
+@app.get("/api/registries")
+async def registries():
+    """How many agents each registry lists and how many can be called at all (the landing page shows it live)."""
+    try:
+        return await registry_stats()
+    except RuntimeError as err:  # the indexer is down and there is no cached copy yet
+        raise HTTPException(503, str(err)) from None
 
 
 @app.get("/api/compare")

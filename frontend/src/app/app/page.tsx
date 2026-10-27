@@ -6,8 +6,8 @@ import { Wordmark, Icon } from "@/components/ui";
 import { Benchmarks } from "@/components/Benchmarks";
 import { Trust } from "@/components/Trust";
 import { FailoverRecord, Timing } from "@/components/Timing";
-import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, InspectorView, Percent, PlanView, Record, Registries, Scoreline, SourcesView, Steps, ValidationsView } from "@/components/Views";
-import { askClarify, getJson, LENGTHS, postJson, REASONINGS, seconds, type Clarify, type Compare, type Length, type Reasoning, type Run } from "@/lib/run";
+import { Answer, ClarifyOptions, Evidence, FollowUp, HiringView, History, InspectorView, Percent, PlanView, Record, Scoreline, SourcesView, Steps, ValidationsView } from "@/components/Views";
+import { askClarify, getJson, LENGTHS, postJson, REASONINGS, seconds, type Clarify, type Length, type Reasoning, type Run } from "@/lib/run";
 
 /** A small segmented radio group: one choice of a few, each with a short hint underneath its label. */
 function Choice<T extends string>({ name, label, options, value, onChange }: {
@@ -57,7 +57,6 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [waitingFor, setWaitingFor] = useState<string | null>(null); // run_id we just started; hide until that report appears
   const [viewing, setViewing] = useState<string | null>(null);       // a past run picked from History
-  const [compare, setCompare] = useState<Compare | null>(null);
   const [question, setQuestion] = useState("");
   const [kill, setKill] = useState(false);
   const [length, setLength] = useState<Length>("medium");
@@ -91,7 +90,6 @@ export default function App() {
     return () => { alive = false; clearTimeout(timer); };
   }, [load, viewing]);
 
-  useEffect(() => { getJson<Compare>("/api/compare").then(setCompare); }, []);
 
   async function startRun(q: string) {
     setClarify(null);
@@ -134,8 +132,6 @@ export default function App() {
     { id: "timing", label: "Timing", count: r.calls?.length || null },
     { id: "inspector", label: "Inspector" },
     { id: "benchmarks", label: "Benchmarks" },
-    { id: "registries", label: "Registries" },
-    { id: "baseline", label: "Compare" },
     { id: "history", label: "History" },
   ] : [];
   const tab = tabs.find((t) => t.id === tabId)?.id ?? (done ? "answer" : "hiring");
@@ -260,8 +256,6 @@ export default function App() {
               {tab === "inspector" && <InspectorView r={r} />}
               {tab === "benchmarks" && <Benchmarks />}
               {tab === "trust" && <Trust />}
-              {tab === "registries" && <Registries r={r} />}
-              {tab === "baseline" && <Baseline compare={compare} />}
               {tab === "history" && <History current={r.run_id} onPick={(id) => { setViewing(id); location.hash = "answer"; }} />}
             </div>
           </section>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Architecture, Failover, Faq, HeroMock, HowItWorks, Screening, StateMachine, TrustTrail } from "@/components/landing";
+import { Architecture, Comparison, Failover, Faq, HeroMock, HowItWorks, RegistryCards, Screening, StateMachine, TrustTrail } from "@/components/landing";
 import { Icon, Reveal, Wordmark } from "@/components/ui";
 
 function Section({ id, children, tone = "canvas", className = "" }: { id?: string; children: React.ReactNode; tone?: "canvas" | "bone"; className?: string }) {
@@ -40,6 +40,7 @@ export default function Landing() {
           <div className="hidden items-center gap-7 text-sm text-muted md:flex">
             <a className="no-underline hover:text-ink" href="#how">How it works</a>
             <a className="no-underline hover:text-ink" href="#trust">Proof</a>
+            <a className="no-underline hover:text-ink" href="#compare">Compare</a>
             <a className="no-underline hover:text-ink" href="#engineers">For engineers</a>
             <a className="no-underline hover:text-ink" href="#faq">FAQ</a>
           </div>
@@ -81,22 +82,7 @@ export default function Landing() {
             nothing. Most entries can&apos;t even be reached, and the ones that can might simply make things up.
           </Heading>
           <div className="grid gap-4 md:grid-cols-6">
-            <Reveal className="card card-hover p-8 md:col-span-3" i={0}>
-              <p className="serif m-0 text-6xl">86 <span className="text-3xl text-muted">of 4,829</span></p>
-              <p className="mt-4 mb-0 text-ink">agents in the Solana Agent Registry list an address you can actually call.</p>
-              <div className="mt-6 h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label="86 of 4,829 is under 2 percent">
-                <div className="h-full rounded-full bg-ink" style={{ width: "1.8%" }} />
-              </div>
-              <p className="mt-2 mb-0 font-mono text-xs text-muted">1.8% reachable · Solana devnet</p>
-            </Reveal>
-            <Reveal className="card card-hover p-8 md:col-span-3" i={1}>
-              <p className="serif m-0 text-6xl">31 <span className="text-3xl text-muted">of 122</span></p>
-              <p className="mt-4 mb-0 text-ink">agents in the SATI registry list an endpoint, and most of those are template placeholders.</p>
-              <div className="mt-6 h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label="31 of 122 is 25 percent">
-                <div className="h-full rounded-full bg-ink" style={{ width: "25%" }} />
-              </div>
-              <p className="mt-2 mb-0 font-mono text-xs text-muted">25% list an endpoint · read from the chain</p>
-            </Reveal>
+            <RegistryCards />
             <Reveal className="card card-hover flex flex-col justify-between gap-6 p-8 md:col-span-2" i={0}>
               <span className="tag tag-red self-start">turned away</span>
               <p className="m-0"><span className="serif text-5xl">0 of 6</span><br /><span className="text-muted">outside agents passed Sworn&apos;s checks in a recent run.</span></p>
@@ -193,6 +179,15 @@ export default function Landing() {
               </Reveal>
             ))}
           </div>
+        </Section>
+
+        {/* comparison */}
+        <Section id="compare">
+          <Heading eyebrow="Side by side" title="Same questions. One team checks, one doesn't.">
+            A fixed team of agents, one of them deliberately bad, against Sworn picking and checking its own team. Both answer the
+            same questions, and every claim is graded the same way: is its quote really on the page it cites?
+          </Heading>
+          <Comparison />
         </Section>
 
         {/* results */}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getJson, type Compare, type RegistryStats } from "@/lib/run";
 import { Icon, Reveal, Window } from "./ui";
 
 /* ---------- hero mock: what a finished run looks like ---------- */
@@ -302,5 +303,93 @@ export function Faq() {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ---------- the open registries, read live ---------- */
+
+function RegistryCard({ n, total, i, children, foot }: { n: number; total: number; i: number; children: React.ReactNode; foot: string }) {
+  const pct = (100 * n) / total;
+  return (
+    <Reveal className="card card-hover p-8 md:col-span-3" i={i}>
+      <p className="serif m-0 text-6xl">{n.toLocaleString()} <span className="text-3xl text-muted">of {total.toLocaleString()}</span></p>
+      <p className="mt-4 mb-0 text-ink">{children}</p>
+      <div className="mt-6 h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label={`${n} of ${total} is ${pct.toFixed(1)} percent`}>
+        <div className="h-full rounded-full bg-ink" style={{ width: `${Math.max(pct, 0.6)}%` }} />
+      </div>
+      <p className="mt-2 mb-0 font-mono text-xs text-muted">{pct.toFixed(1)}% {foot}</p>
+    </Reveal>
+  );
+}
+
+/** How many agents each registry lists and how many can be called at all, read from Solana devnet when the page
+ * opens. Until it loads (or if the backend is off) it shows the last numbers measured. */
+export function RegistryCards() {
+  const [g, setG] = useState<RegistryStats>({ total: 4829, with_profile: 0, with_endpoint: 86, with_skills: 0, sati: { total: 122, with_profile: 0, with_endpoint: 31, synced_at: "" } });
+  const [live, setLive] = useState(false);
+  useEffect(() => { getJson<RegistryStats>("/api/registries").then((s) => { if (s) { setG(s); setLive(true); } }); }, []);
+  return (
+    <>
+      <RegistryCard n={g.with_endpoint} total={g.total} i={0} foot={`reachable · Solana devnet${live ? ", read just now" : ""}`}>
+        agents in the Solana Agent Registry list an address you can actually call.
+        {live && g.with_profile > 0 && <span className="text-muted"> {g.with_profile.toLocaleString()} have a readable profile and {g.with_skills} declare any skills.</span>}
+      </RegistryCard>
+      {g.sati && (
+        <RegistryCard n={g.sati.with_endpoint} total={g.sati.total} i={1} foot="list an endpoint · read from the chain">
+          agents in the SATI registry list an endpoint, and most of those are template placeholders.
+        </RegistryCard>
+      )}
+    </>
+  );
+}
+
+/* ---------- fixed team vs Sworn ---------- */
+
+/** The same questions answered by a hardcoded team (with one bad agent) and by Sworn; claims graded the same way. */
+export function Comparison() {
+  const [c, setC] = useState<Compare | null>(null);
+  useEffect(() => { getJson<Compare>("/api/compare").then(setC); }, []);
+  if (!c) return <p className="m-0 text-muted">Loading the latest comparison…</p>;
+  const sum = (k: "baseline_used" | "baseline_unsupported" | "ours_used" | "ours_unsupported") => c.rows.reduce((n, x) => n + x[k], 0);
+  const team = (label: string, used: number, bad: number, ours: boolean, how: string, i: number) => {
+    const pct = used ? Math.round((100 * bad) / used) : 0;
+    return (
+      <Reveal className="card card-hover p-8" i={i}>
+        <div className="flex items-baseline justify-between gap-4">
+          <p className="m-0 font-medium text-ink">{label}</p>
+          <span className={`tag ${ours ? "tag-green" : "tag-red"}`}>{pct}% unsupported</span>
+        </div>
+        <p className="serif mt-4 mb-0 text-6xl">{bad} <span className="text-3xl text-muted">of {used} claims</span></p>
+        <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label={`${bad} of ${used} claims unsupported`}>
+          <div className="bg-ink" style={{ width: `${100 - pct}%` }} /><div className="bg-red" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="mt-4 mb-0 text-sm text-muted">were not backed by the page they cite. {how}</p>
+      </Reveal>
+    );
+  };
+  return (
+    <>
+      <div className="grid gap-4 md:grid-cols-2">
+        {team("Fixed team", sum("baseline_used"), sum("baseline_unsupported"), false, "A hardcoded team with one bad agent: no screening, no checking.", 0)}
+        {team("Sworn", sum("ours_used"), sum("ours_unsupported"), true, "Every agent screened before hiring, every claim checked by a second agent.", 1)}
+      </div>
+      <Reveal className="card mt-4 overflow-x-auto px-6 py-2 sm:px-8">
+        <table className="tbl min-w-[520px]">
+          <thead><tr><th>Question</th><th>Fixed team</th><th>Sworn</th></tr></thead>
+          <tbody>
+            {c.rows.map((x) => (
+              <tr key={x.question}>
+                <td className="text-ink">{x.question}</td>
+                <td className={x.baseline_unsupported ? "text-red" : "text-muted"}>{x.baseline_unsupported} of {x.baseline_used} unsupported</td>
+                <td className={x.ours_unsupported ? "text-red" : "text-muted"}>{x.ours_unsupported} of {x.ours_used} unsupported</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Reveal>
+      <p className="mt-4 mb-0 text-sm text-muted">
+        Same {c.rows.length} questions, same agents, same grading{c.mode ? ` · ${c.mode}` : ""}. A claim is unsupported when its quote is not on the page it cites.
+      </p>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   askClarify, citedIds, deadSet, explorer, getJson, percent, progress, ROLES, roundTrip, ROUNDS, seconds, secs, sourceName, STEPS,
-  type Clarify, type Compare, type Hiring, type Run, type RunSummary, type ValidationRow,
+  type Clarify, type Hiring, type Run, type RunSummary, type ValidationRow,
 } from "@/lib/run";
 import { Asset, Empty, Origin, Rating, Title, verdictTag } from "./bits";
 import { Icon } from "./ui";
@@ -584,85 +584,6 @@ export function Record({ r }: { r: Run }) {
         <a href={`/api/runs/${r.run_id}/validations`} target="_blank" rel="noopener" className="inline-code no-underline">/api/runs/{r.run_id}/validations</a>.
         Every on-chain entry links to its evidence file, which links back to this run&apos;s report.
       </p>
-    </>
-  );
-}
-
-/* ---------- registries ---------- */
-
-function Bar({ label, n, total, children }: { label: string; n: number; total: number; children: React.ReactNode }) {
-  const pct = (100 * n) / total;
-  return (
-    <div className="card p-6 sm:p-8">
-      <p className="eyebrow mb-3">{label}</p>
-      <p className="serif m-0 text-5xl">{n} <span className="text-2xl text-muted">of {total.toLocaleString()}</span></p>
-      <div className="mt-5 h-2 overflow-hidden rounded-full bg-bone"><div className="h-full rounded-full bg-ink" style={{ width: `${Math.max(pct, 0.6)}%` }} /></div>
-      <p className="mt-4 mb-0 text-sm text-muted">{children}</p>
-    </div>
-  );
-}
-
-export function Registries({ r }: { r: Run }) {
-  const g = r.registry;
-  if (!g) return <><Title>The open registries</Title><Empty>Reading the registries…</Empty></>;
-  return (
-    <>
-      <Title note="Solana devnet, read at the start of this run.">The open registries</Title>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Bar label="Solana Agent Registry (8004)" n={g.with_endpoint} total={g.total}>
-          Agents with an endpoint you can call at all ({((100 * g.with_endpoint) / g.total).toFixed(1)}%). {g.with_profile.toLocaleString()} have a readable profile and {g.with_skills} declare any skills.
-        </Bar>
-        {g.sati && (
-          <Bar label="SATI registry" n={g.sati.with_endpoint} total={g.sati.total}>
-            Agents whose profile lists an MCP or A2A endpoint. {g.sati.with_profile} of {g.sati.total} profiles could be read. Most endpoints are template placeholders, so every candidate is screened.
-          </Bar>
-        )}
-      </div>
-    </>
-  );
-}
-
-/* ---------- baseline ---------- */
-
-export function Baseline({ compare }: { compare: Compare | null }) {
-  if (!compare) return <><Title>Fixed team vs Sworn</Title><Empty>No comparison yet. Run <code className="inline-code">python -m app.baseline</code> to compare.</Empty></>;
-  const sum = (k: "baseline_used" | "baseline_unsupported" | "ours_used" | "ours_unsupported") => compare.rows.reduce((n, x) => n + x[k], 0);
-  const team = (label: string, used: number, bad: number, ours: boolean, how: string) => {
-    const pct = used ? Math.round((100 * bad) / used) : 0;
-    return (
-      <div className="card p-6 sm:p-8">
-        <div className="flex items-baseline justify-between gap-4">
-          <p className="m-0 font-medium text-ink">{label}</p>
-          <span className={`tag ${ours ? "tag-green" : "tag-red"}`}>{pct}% unsupported</span>
-        </div>
-        <div className="mt-5 flex h-2 overflow-hidden rounded-full bg-bone" role="img" aria-label={`${bad} of ${used} claims unsupported`}>
-          <div className="bg-ink" style={{ width: `${100 - pct}%` }} /><div className="bg-red" style={{ width: `${pct}%` }} />
-        </div>
-        <p className="mt-4 mb-0 text-sm text-muted">{used - bad} of {used} claims in its answers were backed by their source; <span className="text-ink">{bad} were not</span>. {how}</p>
-      </div>
-    );
-  };
-  return (
-    <>
-      <Title note={`Same ${compare.rows.length} questions, same agents, same grading${compare.mode ? ` · ${compare.mode}` : ""}. A claim is unsupported when its quote is not on the page it cites.`}>Fixed team vs Sworn</Title>
-      <div className="grid gap-4 md:grid-cols-2">
-        {team("Fixed team", sum("baseline_used"), sum("baseline_unsupported"), false, "A hardcoded team with one bad agent, no screening, no checking.")}
-        {team("Sworn", sum("ours_used"), sum("ours_unsupported"), true, "Every agent screened before hiring, every claim checked by a second agent.")}
-      </div>
-      <div className="card mt-4 overflow-x-auto px-6 py-2">
-        <table className="tbl min-w-[520px]">
-          <thead><tr><th>Question</th><th>Fixed team</th><th>Sworn</th></tr></thead>
-          <tbody>
-            {compare.rows.map((x) => (
-              <tr key={x.question}>
-                <td className="text-ink">{x.question}</td>
-                <td className={x.baseline_unsupported ? "text-red" : "text-muted"}>{x.baseline_unsupported} of {x.baseline_used} unsupported</td>
-                <td className={x.ours_unsupported ? "text-red" : "text-muted"}>{x.ours_unsupported} of {x.ours_used} unsupported</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </>
   );
 }
