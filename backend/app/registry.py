@@ -268,7 +268,9 @@ def _fit(s: str, max_bytes: int) -> str:
     return str(s).encode()[:max_bytes].decode(errors="ignore")
 
 
-async def give_feedback(asset: str, *, score: int, role: str, outcome: str, endpoint: str | None, report_url: str, registry: str = "8004") -> str:
+async def give_feedback(asset: str, *, score: int, role: str, outcome: str, endpoint: str | None, report_url: str, registry: str = "8004",
+                        file_hash: str | None = None) -> str:
+    """file_hash: SHA-256 (hex) of the evidence file at report_url, written on-chain with the score (8004 only)."""
     if registry == "sati":
         # SATI's public feedback endpoint signs and pays for the attestation itself; content is capped at 100 bytes,
         # so only the score and the two tags go on-chain.
@@ -281,7 +283,7 @@ async def give_feedback(asset: str, *, score: int, role: str, outcome: str, endp
             raise RuntimeError(f"SATI {res.status_code}: {body.get('error', '')}")
         return body["txSignature"]
     body = await bridge("POST", "/feedback", json={"asset": asset, "score": score, "role": role, "outcome": outcome,
-                                                   "endpoint": endpoint, "reportUrl": report_url})
+                                                   "endpoint": endpoint, "reportUrl": report_url, "fileHash": file_hash})
     return body["tx"]
 
 

@@ -510,21 +510,64 @@ export function HiringView({ r }: { r: Run }) {
 
 /* ---------- on-chain record ---------- */
 
+/** Link to a rating's evidence file, and a check: the browser hashes the file, then the registry bridge recomputes the
+ * rating's on-chain SEAL hash with that file hash. They match only if this exact file was part of the rating. */
+function EvidenceFile({ hash, asset, tx }: { hash: string; asset: string; tx?: string }) {
+  type State = "idle" | "checking" | "match" | "file-differs" | "seal-differs" | "not-indexed" | "error";
+  const [state, setState] = useState<State>("idle");
+  async function check() {
+    setState("checking");
+    try {
+      const res = await fetch(`/api/evidence/${hash}`, { cache: "no-store" });
+      const digest = await crypto.subtle.digest("SHA-256", await res.arrayBuffer());
+      const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      if (!res.ok) return setState("error");
+      if (hex !== hash) return setState("file-differs");
+      if (!tx) return setState("match");
+      const seal = await getJson<{ indexed: boolean; match?: boolean }>(`/api/evidence-check?asset=${asset}&tx=${tx}&file_hash=${hex}`);
+      setState(!seal ? "error" : !seal.indexed ? "not-indexed" : seal.match ? "match" : "seal-differs");
+    } catch {
+      setState("error");
+    }
+  }
+  const retry = <button type="button" onClick={check} className="text-muted underline underline-offset-4 hover:text-ink">check</button>;
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+      <a href={`/api/evidence/${hash}`} target="_blank" rel="noopener" className="font-mono" title={`SHA-256 ${hash}`}>{hash.slice(0, 8)}…</a>
+      {state === "idle" && retry}
+      {state === "checking" && <span className="text-muted">checking…</span>}
+      {state === "match" && <span className="tag tag-green" title="Your browser hashed the file; with that hash, the rating's on-chain seal recomputes exactly">matches on-chain</span>}
+      {state === "file-differs" && <span className="tag tag-red" title="The file's SHA-256 is not the one in its link">file changed</span>}
+      {state === "seal-differs" && <span className="tag tag-red" title="This file was not part of the rating written on-chain">not this rating&apos;s file</span>}
+      {state === "not-indexed" && <><span className="text-muted" title="The registry's indexer is usually a minute or two behind the chain">not indexed yet</span>{retry}</>}
+      {state === "error" && <><span className="tag tag-red">could not check</span>{retry}</>}
+    </span>
+  );
+}
+
 export function Record({ r }: { r: Run }) {
   if (!r.feedback.length) return <><Title>On-chain record</Title><Empty>When the run ends, every agent&apos;s score is written to the Solana Agent Registry and listed here with its transaction.</Empty></>;
   return (
     <>
-      <Title note="Each agent's score, written to the Solana Agent Registry by the orchestrator's wallet. Open any transaction to check it yourself.">On-chain record</Title>
+      <Title note="Each agent's score, written to the Solana Agent Registry by the orchestrator's wallet. A run score is the mean of what the run could measure (reliability, speed, grounding); a benchmark score (sab-v1) also covers accuracy. Every rating links to an evidence file whose SHA-256 is written on-chain with it.">On-chain record</Title>
       <div className="card overflow-x-auto px-6 py-2">
-        <table className="tbl min-w-[560px]">
-          <thead><tr><th>Agent</th><th>Role</th><th>Score</th><th>Outcome</th><th>Transaction</th></tr></thead>
+        <table className="tbl min-w-[860px]">
+          <thead><tr><th>Agent</th><th>Role</th><th>Score</th><th>Made of</th><th>Kind</th><th>Evidence</th><th>Transaction</th></tr></thead>
           <tbody>
             {r.feedback.map((f) => (
-              <tr key={`${f.asset}-${f.role}`}>
+              <tr key={`${f.asset}-${f.role}-${f.outcome}`}>
                 <td><span className="font-medium text-ink">{f.name}</span> <Asset asset={f.asset} /></td>
                 <td className="text-muted capitalize">{f.role}</td>
                 <td className="font-mono text-ink">{f.score}</td>
-                <td><span className={`tag ${f.outcome === "passed" ? "tag-green" : "tag-red"}`}>{f.outcome}</span></td>
+                <td className="text-xs text-muted">
+                  {f.aspects ? Object.entries(f.aspects).map(([a, v]) => <span key={a} className="mr-2 whitespace-nowrap">{a} <span className="font-mono text-ink">{Math.round(v!)}</span></span>) : "–"}
+                </td>
+                <td>
+                  {f.outcome === "sab-v1"
+                    ? <span className="tag tag-gray">benchmark</span>
+                    : <span className={`tag ${f.outcome === "passed" ? "tag-green" : "tag-red"}`}>{f.outcome === "passed" ? "run" : f.outcome}</span>}
+                </td>
+                <td>{f.evidence ? <EvidenceFile hash={f.evidence} asset={f.asset} tx={f.tx} /> : <span className="text-xs text-faint">–</span>}</td>
                 <td>{f.tx ? <a href={explorer("tx", f.tx)} target="_blank" rel="noopener" className="font-mono text-xs">{f.tx.slice(0, 10)}…</a> : <span className="text-xs text-muted">{f.error ?? "not sent"}</span>}</td>
               </tr>
             ))}
@@ -535,7 +578,7 @@ export function Record({ r }: { r: Run }) {
         Validation records (each claim, who stated it, who checked it, the verdict) are also listed on the{" "}
         <a href="#validations" className="underline underline-offset-4">Validations</a> tab, and as raw JSON at{" "}
         <a href={`/api/runs/${r.run_id}/validations`} target="_blank" rel="noopener" className="inline-code no-underline">/api/runs/{r.run_id}/validations</a>.
-        Every on-chain entry links back to this run&apos;s report.
+        Every on-chain entry links to its evidence file, which links back to this run&apos;s report.
       </p>
     </>
   );

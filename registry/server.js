@@ -4,13 +4,14 @@
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import express from 'express';
-import { SolanaSDK } from '8004-solana';
+import { SolanaSDK, computeSealHash } from '8004-solana';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 dotenv.config({ path: fileURLToPath(new URL('../.env', import.meta.url)), quiet: true }); // in Docker the env comes from compose
 
 const PORT = Number(process.env.REGISTRY_PORT || 3002);
 const ALIVE_TIMEOUT_MS = 5000;
+const INDEXER = 'https://8004-indexer-dev.qnt.sh/v2/graphql';
 
 const keypair = env => process.env[env]
   ? Keypair.fromSecretKey(Uint8Array.from(JSON.parse(process.env[env])))
@@ -80,7 +81,8 @@ app.get('/ratings/:asset', async (req, res) => {
 
 app.post('/feedback', async (req, res) => {
   if (!reviewer) return res.status(503).json({ error: 'ORCHESTRATOR_PRIVATE_KEY is not set' });
-  const { asset, score, role, outcome, endpoint, reportUrl } = req.body ?? {};
+  const { asset, score, role, outcome, endpoint, reportUrl, fileHash } = req.body ?? {};
+  if (fileHash && !/^[0-9a-f]{64}$/.test(fileHash)) return res.status(400).json({ error: 'fileHash must be 64 hex characters (SHA-256)' });
   try {
     const result = await sdk(reviewer).giveFeedback(new PublicKey(asset), {
       value: score,
@@ -89,9 +91,38 @@ app.post('/feedback', async (req, res) => {
       tag2: fit(outcome, 32),
       ...(endpoint && { endpoint: fit(endpoint, 250) }),
       ...(reportUrl && { feedbackUri: fit(reportUrl, 250) }),
+      // SHA-256 of the evidence file at feedbackUri: anyone can fetch the file and check it was not changed.
+      ...(fileHash && { feedbackFileHash: Buffer.from(fileHash, 'hex') }),
     });
     if (!result.success) throw new Error(result.error ?? 'feedback failed');
     res.json({ tx: result.signature });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// Does this file belong to this rating? The registry stores a SEAL hash of every field of a rating, the evidence file's
+// hash included. Recompute it from the rating's on-chain fields plus the given file hash and compare with the stored one.
+app.get('/seal-check', async (req, res) => {
+  const { asset, tx, fileHash } = req.query;
+  if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(asset ?? '') || !/^[1-9A-HJ-NP-Za-km-z]{64,90}$/.test(tx ?? '')) {
+    return res.status(400).json({ error: 'asset and tx must be base58' });
+  }
+  if (!/^[0-9a-f]{64}$/.test(fileHash ?? '')) return res.status(400).json({ error: 'fileHash must be 64 hex characters (SHA-256)' });
+  try {
+    const query = `{ feedbacks(first: 200, orderBy: createdAt, orderDirection: desc, where: {agent: "${asset}"}) {
+      tag1 tag2 endpoint feedbackURI feedbackHash solana { txSignature valueRaw valueDecimals score } } }`;
+    const body = await (await fetch(INDEXER, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ query }) })).json();
+    if (!body.data) throw new Error(body.errors?.[0]?.message ?? body.error ?? 'indexer error');
+    const f = body.data.feedbacks.find(x => x.solana?.txSignature === tx);
+    if (!f) return res.json({ indexed: false }); // the indexer is usually a minute or two behind the chain
+    const recomputed = computeSealHash({
+      value: BigInt(f.solana.valueRaw), valueDecimals: f.solana.valueDecimals, score: f.solana.score,
+      tag1: f.tag1 ?? '', tag2: f.tag2 ?? '', endpoint: f.endpoint ?? '', feedbackUri: f.feedbackURI ?? '',
+      feedbackFileHash: Buffer.from(fileHash, 'hex'),
+    }).toString('hex');
+    const onChain = String(f.feedbackHash).replace(/^0x/, '');
+    res.json({ indexed: true, match: recomputed === onChain, onChain, recomputed, feedbackUri: f.feedbackURI });
   } catch (err) {
     res.status(502).json({ error: err.message });
   }

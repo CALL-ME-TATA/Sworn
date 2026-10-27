@@ -1,4 +1,5 @@
 """Postgres keeps every run, validation record and feedback entry; Redis keeps the live run, caches and locks."""
+import hashlib
 import json
 
 import asyncpg
@@ -63,6 +64,11 @@ create table if not exists registry_ratings (
   score real,
   at bigint not null,
   revoked boolean not null default false
+);
+create table if not exists evidence (
+  hash text primary key,
+  body text not null,
+  created_at timestamptz not null default now()
 );
 create table if not exists comparisons (
   id serial primary key,
@@ -182,6 +188,23 @@ async def save_comparison(data: dict):
 async def latest_comparison() -> dict | None:
     row = await pool.fetchrow("select data from comparisons order by id desc limit 1")
     return json.loads(row["data"]) if row else None
+
+
+def canonical(doc: dict) -> str:
+    """One fixed serialisation, so the same evidence always has the same hash."""
+    return json.dumps(doc, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+async def save_evidence(doc: dict) -> str:
+    """Stores an evidence file under its own SHA-256 and returns that hash (hex)."""
+    body = canonical(doc)
+    digest = hashlib.sha256(body.encode()).hexdigest()
+    await pool.execute("insert into evidence (hash, body) values ($1, $2) on conflict do nothing", digest, body)
+    return digest
+
+
+async def get_evidence(digest: str) -> str | None:
+    return await pool.fetchval("select body from evidence where hash = $1", digest)
 
 
 async def save_registry_ratings(rows: list[dict]):

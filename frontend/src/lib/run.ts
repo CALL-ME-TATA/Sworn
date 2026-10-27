@@ -58,7 +58,11 @@ export type Failover = {
   failed_at_ms?: number; fail_ms?: number; switch_ms?: number; backup_ms?: number; recovered_at_ms?: number;
 };
 export type Call = { role: Role; agent: string; task_id: string; at_ms: number; ms: number | null; ok: boolean; error?: string };
-export type Feedback = { asset: string; name: string; role: Role; ours: boolean; registry: string; score: number; outcome: string; tx?: string; error?: string };
+export type Feedback = {
+  asset: string; name: string; role: Role; ours: boolean; registry: string; score: number; outcome: string; tx?: string; error?: string;
+  aspects?: Partial<Record<Aspect, number>>; // what the score is the mean of
+  evidence?: string;                         // SHA-256 of the evidence file, also written on-chain with the score
+};
 export type RegistryStats = {
   total: number; with_profile: number; with_endpoint: number; with_skills: number;
   sati?: { total: number; with_profile: number; with_endpoint: number; synced_at: string };
