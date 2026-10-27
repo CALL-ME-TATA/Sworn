@@ -28,6 +28,7 @@ class CONFIG:
     FEEDBACK_CONCURRENCY = int(os.getenv("FEEDBACK_CONCURRENCY", "1"))  # on-chain score writes in flight at once
     SATI_FEEDBACK = os.getenv("SATI_FEEDBACK") == "on"  # write scores to SATI too (through SATI's public API)
     INDEXER = "https://8004-indexer-dev.qnt.sh/v2/graphql"
+    TRUST_REFRESH = 600         # seconds between reads of new registry ratings (app/trust.py)
     PROVIDER = _PROVIDER
     MODEL = os.getenv("MODEL") or _DEFAULT_MODEL.get(_PROVIDER, "gpt-4.1-mini")
     LLM = os.getenv("LLM", "on") != "off"  # LLM=off runs planner, reasoner, verifier and generator on rules

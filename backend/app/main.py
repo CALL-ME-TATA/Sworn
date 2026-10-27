@@ -9,12 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from . import store
+from . import store, trust
 from .agents import HANDLERS
 from .llm import ProviderLimit
 from .config import AGENT_LIST, CONFIG, DATA, LENGTHS, REASONING
 from .orchestrator import clarify, run
-from .registry import list_agents, registration_file
+from .registry import list_agents, registration_file, wallets
 from .sources import seed_cache
 
 BY_NAME = {a["name"]: a for a in AGENT_LIST}
@@ -33,10 +33,19 @@ async def lifespan(app: FastAPI):
             print(f"registry loaded: {len(await list_agents())} agents")
         except Exception as err:  # noqa: BLE001
             print(f"registry preload failed: {err}")
+        # Then every rating on it: the stored copy at once, new ones from the indexer now and every few minutes after.
+        await trust.load()
+        while True:
+            try:
+                print(f"registry ratings: {await trust.refresh()} new")
+            except Exception as err:  # noqa: BLE001 - the stored copy keeps working while the indexer is down
+                print(f"ratings refresh failed: {err}")
+            await asyncio.sleep(CONFIG.TRUST_REFRESH)
 
-    asyncio.create_task(preload())
+    background = asyncio.create_task(preload())  # held here so it is not garbage-collected while it loops
     print(f"agents on {CONFIG.AGENTS_BASE_URL} (port {CONFIG.PORT}), {CONFIG.PROVIDER} · {CONFIG.MODEL}" if CONFIG.LLM else "rule-based mode")
     yield
+    background.cancel()
     await store.close()
 
 
@@ -168,6 +177,17 @@ async def get_run(run_id: str):
 @app.get("/api/runs/{run_id}/validations")
 async def validations(run_id: str):
     return await store.validations(run_id)
+
+
+@app.get("/api/registry/trust")
+async def registry_trust():
+    """Every rating on the 8004 registry, checked for self-ratings, captive wallets, bursts, single sources and rings."""
+    body = await store.redis.get("trust:report")
+    if not body:
+        raise HTTPException(503, "the registry's ratings are still being read; try again in a minute or two")
+    report = json.loads(body)
+    report["ours"] = {w: role for role, w in (await wallets()).items() if w}  # wallet -> owner | reviewer
+    return report
 
 
 @app.get("/api/benchmarks")

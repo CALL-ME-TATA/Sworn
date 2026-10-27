@@ -34,15 +34,18 @@ async def wallets() -> dict:
 
 
 async def _indexer_page(skip: int) -> list[dict]:
-    """One page of agents. The indexer allows 60 requests a minute; when it says slow down, wait and retry."""
+    """One page of agents."""
+    return (await indexer(f"query($skip: Int) {{ agents(first: 250, skip: $skip, orderBy: createdAt, orderDirection: desc) {{ {AGENT_FIELDS} }} }}",
+                          {"skip": skip}))["agents"]
+
+
+async def indexer(query: str, variables: dict) -> dict:
+    """One GraphQL query to the 8004 indexer. It allows 60 requests a minute; when it says slow down, wait and retry."""
     for attempt in range(1, 5):
-        res = await _http.post(CONFIG.INDEXER, json={
-            "query": f"query($skip: Int) {{ agents(first: 250, skip: $skip, orderBy: createdAt, orderDirection: desc) {{ {AGENT_FIELDS} }} }}",
-            "variables": {"skip": skip},
-        })
+        res = await _http.post(CONFIG.INDEXER, json={"query": query, "variables": variables})
         body = res.json()
         if body.get("data"):
-            return body["data"]["agents"]
+            return body["data"]
         error = body.get("error") or (body.get("errors") or [{}])[0].get("message") or f"HTTP {res.status_code}"
         if "rate" not in str(error).lower() or attempt == 4:
             raise RuntimeError(f"indexer: {error}")

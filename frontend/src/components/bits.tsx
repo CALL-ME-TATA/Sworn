@@ -1,4 +1,4 @@
-import { explorer, type Hiring } from "@/lib/run";
+import { explorer, FLAG_TEXT, type Hiring } from "@/lib/run";
 
 /** An agent's on-chain identity, linked to Solana Explorer. */
 export function Asset({ asset }: { asset?: string }) {
@@ -25,10 +25,12 @@ export function Origin({ h }: { h: Partial<Hiring> & { protocol?: string } }) {
 
 /** Independent on-chain reputation; ratings the agent's own operator gave it are left out and only counted. */
 export function Rating({ h }: { h: Partial<Hiring> }) {
+  // Why ratings were left out, from the fake-reputation detector ("captive wallet 120, burst 4").
+  const why = Object.entries(h.ignored ?? {}).map(([k, n]) => `${FLAG_TEXT[k as keyof typeof FLAG_TEXT]?.label ?? k} ${n}`).join(", ");
   const main = h.score != null ? `${h.score} avg · ${h.ratings} independent rating${h.ratings === 1 ? "" : "s"}` : "no independent ratings";
   return (
-    <span className="text-[13px] text-muted" title="Ratings from the agent's own operator are self-ratings and do not count">
-      {main}{h.self_ratings ? ` · ${h.self_ratings} self-ratings ignored` : ""}
+    <span className="text-[13px] text-muted" title={why || "Ratings from the agent's own operator are self-ratings and do not count"}>
+      {main}{h.self_ratings ? ` · ${h.self_ratings} ${h.ignored ? "flagged" : "self-"}ratings ignored` : ""}
     </span>
   );
 }

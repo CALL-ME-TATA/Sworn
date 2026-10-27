@@ -83,3 +83,8 @@
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* Registry trust graph: flagged links of the selected node or rule flow toward the owner they inflate. */
+.graph-flow { stroke-dasharray: 5 5; animation: graph-flow 0.9s linear infinite; }
+@keyframes graph-flow { to { stroke-dashoffset: -10; } }
+@media (prefers-reduced-motion: reduce) { .graph-flow { animation: none; } }

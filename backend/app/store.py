@@ -55,6 +55,15 @@ create table if not exists benchmarks (
   created_at timestamptz not null default now()
 );
 create index if not exists benchmarks_lookup on benchmarks (asset, role, version, day);
+create table if not exists registry_ratings (
+  id text primary key,
+  agent text not null,
+  owner text not null,
+  client text not null,
+  score real,
+  at bigint not null,
+  revoked boolean not null default false
+);
 create table if not exists comparisons (
   id serial primary key,
   created_at timestamptz not null default now(),
@@ -173,3 +182,14 @@ async def save_comparison(data: dict):
 async def latest_comparison() -> dict | None:
     row = await pool.fetchrow("select data from comparisons order by id desc limit 1")
     return json.loads(row["data"]) if row else None
+
+
+async def save_registry_ratings(rows: list[dict]):
+    await pool.executemany(
+        """insert into registry_ratings (id, agent, owner, client, score, at, revoked) values ($1,$2,$3,$4,$5,$6,$7)
+           on conflict (id) do update set owner = excluded.owner, score = excluded.score, revoked = excluded.revoked""",
+        [(r["id"], r["agent"], r["owner"], r["client"], r["score"], r["at"], r["revoked"]) for r in rows])
+
+
+async def registry_ratings() -> list[dict]:
+    return [dict(r) for r in await pool.fetch("select id, agent, owner, client, score, at, revoked from registry_ratings")]

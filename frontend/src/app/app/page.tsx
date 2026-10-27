@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Wordmark, Icon } from "@/components/ui";
 import { Benchmarks } from "@/components/Benchmarks";
+import { Trust } from "@/components/Trust";
 import { FailoverRecord, Timing } from "@/components/Timing";
 import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, Percent, Record, Registries, Scoreline, Steps } from "@/components/Views";
 import { askClarify, getJson, LENGTHS, postJson, REASONINGS, seconds, type Clarify, type Compare, type Length, type Reasoning, type Run } from "@/lib/run";
@@ -125,6 +126,7 @@ export default function App() {
     { id: "answer", label: "Answer" },
     { id: "evidence", label: "Evidence", count: r.claims.length || null },
     { id: "hiring", label: "Hiring", count: r.hiring.length || null },
+    { id: "trust", label: "Registry trust" },
     { id: "record", label: "On-chain", count: r.feedback.filter((f) => f.tx).length || null },
     { id: "timing", label: "Timing", count: r.calls?.length || null },
     { id: "benchmarks", label: "Benchmarks" },
@@ -241,6 +243,7 @@ export default function App() {
               {tab === "record" && <Record r={r} />}
               {tab === "timing" && <Timing r={r} />}
               {tab === "benchmarks" && <Benchmarks />}
+              {tab === "trust" && <Trust />}
               {tab === "registries" && <Registries r={r} />}
               {tab === "baseline" && <Baseline compare={compare} />}
               {tab === "history" && <History current={r.run_id} onPick={(id) => { setViewing(id); location.hash = "answer"; }} />}

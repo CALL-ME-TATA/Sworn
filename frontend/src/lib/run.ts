@@ -11,9 +11,37 @@ export type Hiring = {
   asset: string; name: string; role: Role; ours: boolean; registry: "8004" | "sati";
   stage: "reputation" | "alive" | "trial" | "hired"; result: "checking" | "passed" | "failed" | "busy"; // busy: our AI provider was out of quota, not scored
   reason: string | null; score: number | null; ratings: number; self_ratings?: number; protocol?: string;
+  ignored?: Partial<Record<TrustFlag | "operator", number>> | null; // ratings left out of the score, and why
   bench?: { id?: number; score: number; aspects: Partial<Record<Aspect, number>>; cached: boolean; version: string };
 };
 export type Member = { asset: string; name: string };
+/** The fake-reputation detector's report (backend/app/trust.py). */
+export type TrustFlag = "self" | "captive" | "burst" | "single_source" | "ring";
+/** The detector's rules, as shown to people. */
+export const FLAG_TEXT: Record<TrustFlag | "operator", { label: string; about: string }> = {
+  self: { label: "self", about: "the rater owns the agent" },
+  captive: { label: "captive wallet", about: "the wallet has rated 3+ times, always one owner's agents: usually the owner's second wallet" },
+  burst: { label: "burst", about: "under 10 s after the same wallet rated that owner's agents: a script, not a customer" },
+  single_source: { label: "single source", about: "all of the agent's 3+ ratings come from one wallet" },
+  ring: { label: "ring", about: "two operators rate each other's agents" },
+  operator: { label: "operator", about: "a wallet known to belong to the agent's own operator" },
+};
+export type TrustAgent = {
+  asset: string; owner: string; name?: string | null; ratings: number; raters: number; raw: number | null; independent: number | null;
+  independent_count: number; independent_pct: number; flags: Partial<Record<TrustFlag, number>>; verdict: "independent" | "mostly_flagged" | "no_independent";
+};
+export type TrustReport = {
+  summary: {
+    ratings: number; agents: number; raters: number; owners: number; flagged: number; flagged_pct: number; by_flag: Record<TrustFlag, number>;
+    captive_wallets: number; captive_ratings_pct: number; verdicts: Partial<Record<TrustAgent["verdict"], number>>; agents_3plus: number; updated_at: number;
+  };
+  agents: TrustAgent[];
+  graph: {
+    nodes: { id: string; owner: boolean; rates: boolean; agents: number; captive: boolean; ratings_given: number }[];
+    edges: { source: string; target: string; n: number; flagged: boolean; why: TrustFlag | null }[];
+  };
+  ours: Record<string, string>; // our wallets: address -> "owner" | "reviewer"
+};
 export type Task = {
   id: string; question: string; search: string; web?: string; planned_by_name?: string;
   sources?: { title: string; url: string }[]; retrieved_by_name?: string;

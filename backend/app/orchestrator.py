@@ -15,7 +15,7 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
-from . import bench, llm, metrics, store
+from . import bench, llm, metrics, store, trust
 from .config import CONFIG, REASONING, ROLES
 from .llm import ask
 from .registry import discover, get_score, give_feedback, is_alive, operator_wallets, registry_stats
@@ -181,10 +181,13 @@ class Run:
                 self.touch(agent, role).update(outcome=outcome, fail=1)
             return None
 
-        # Only independent ratings count: none from the agent's own operator (for our agents, none from us).
-        rep = await get_score(agent["asset"], entry["registry"], await operator_wallets(agent))
+        # Only independent ratings count: none from the agent's own operator (for our agents, none from us), and on 8004
+        # none the fake-reputation detector flags (app/trust.py). Until its first read of the registry, the direct read.
+        operator = await operator_wallets(agent)
+        rep = (trust.agent_score(agent["asset"], operator) if entry["registry"] == "8004" and trust.ready()
+               else await get_score(agent["asset"], entry["registry"], operator))
         entry["score"], entry["ratings"] = (rep or {}).get("average"), (rep or {}).get("count", 0)
-        entry["self_ratings"] = (rep or {}).get("self_count", 0)
+        entry["self_ratings"], entry["ignored"] = (rep or {}).get("self_count", 0), (rep or {}).get("ignored")
         if rep and rep["count"] >= CONFIG.MIN_FEEDBACKS and rep["average"] < CONFIG.MIN_SCORE:
             return reject("reputation", f"independent average {rep['average']} over {rep['count']} ratings")
 
