@@ -132,13 +132,12 @@ def format_research_text(summary: dict) -> str:
     if summary.get("failovers"):
         bits.append(f"{summary['failovers']} failover(s)")
 
+    # Answer only + a thin footer. No "present as prose" / agent meta — that makes hosts
+    # rewrite the answer a second time in the chat while the tool UI already shows it.
     return (
         f"{answer}\n\n"
-        f"---\n"
-        f"Run ID: `{run_id}` · {' · '.join(bits)}\n"
-        f"Debugger: {summary.get('ui') or 'http://localhost:3000/app'}\n"
-        f"Present this answer to the user as prose. Do not dump JSON.\n"
-        f"JSON/full report only if the user asks: debug_get_run(run_id=\"{run_id}\")"
+        f"—\n"
+        f"`{run_id}` · {' · '.join(bits)} · {summary.get('ui') or 'http://localhost:3000/app'}"
     )
 
 

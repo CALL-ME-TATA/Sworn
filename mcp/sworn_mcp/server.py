@@ -1,7 +1,13 @@
-"""Sworn MCP server (stdio): init → prenamed research tools → inspect / debug."""
+"""Sworn MCP server: init → prenamed research tools → inspect / debug.
+
+Transports (env):
+  MCP_TRANSPORT=stdio | sse | streamable-http  (default stdio locally, streamable-http in Docker)
+  MCP_HOST / MCP_PORT — bind address for HTTP/SSE (Docker: 0.0.0.0:3003)
+"""
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
@@ -9,6 +15,9 @@ from mcp.server.fastmcp import FastMCP
 from . import client as api
 from . import __version__
 from .session import SESSION, catalog_payload, not_ready_payload
+
+_MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1")
+_MCP_PORT = int(os.getenv("MCP_PORT", "3003"))
 
 mcp = FastMCP(
     "sworn",
@@ -20,12 +29,18 @@ mcp = FastMCP(
         "research_standard / research_deep (or run_research) as SEPARATE MCP tool calls — "
         "do not re-init, and do not shell-wrap init+research in one process. "
         "The in-process session remembers ready state and last run_id until the MCP server restarts. "
-        "Research tools return plain text (the answer + a short footer) — show that prose to the user. "
-        "Do NOT paste JSON into the chat. Call debug_get_run only when the user asks for a report/JSON. "
+        "Research tools return the user-facing answer as plain text (plus a one-line footer). "
+        "CRITICAL: after research_brief / research_standard / research_deep / run_research succeeds, "
+        "do NOT rewrite, paraphrase, or repeat the answer in your chat message — the tool result "
+        "already is the answer. Reply with at most one short line such as "
+        "'Done — citations in the debugger' (include run_id only if useful). "
+        "Do NOT paste JSON. Call debug_get_run only when the user asks for a full report. "
         "Do not ask clarifying questions on the user's behalf. "
         "After a run, use get_evidence / get_hiring when the user wants proof or who was hired. "
         "Use other debug_* tools only for engineering inspection."
     ),
+    host=_MCP_HOST,
+    port=_MCP_PORT,
 )
 
 
@@ -156,8 +171,8 @@ async def run_research(
 ) -> str:
     """Run verified multi-agent research. Requires sworn_init first. Blocks until the answer is ready.
 
-    Returns plain text (answer + short footer) for the user — not JSON.
-    Full JSON report: call debug_get_run only when the user asks for a report.
+    Returns plain text (answer + short footer). Do not paraphrase or repeat it in chat —
+    the tool result is the user-facing answer. Full JSON: debug_get_run only if asked.
 
     Args:
         question: Research question (as the user asked it).
@@ -373,7 +388,12 @@ def sworn_start() -> str:
 
 
 def main() -> None:
-    mcp.run(transport="stdio")
+    transport = os.getenv("MCP_TRANSPORT", "stdio").strip().lower()
+    if transport not in ("stdio", "sse", "streamable-http"):
+        transport = "stdio"
+    if transport != "stdio":
+        print(f"sworn-mcp listening on {transport}://{_MCP_HOST}:{_MCP_PORT} (API {api.API})", flush=True)
+    mcp.run(transport=transport)  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

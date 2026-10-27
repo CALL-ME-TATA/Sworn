@@ -52,7 +52,7 @@ Ambiguous questions get a "which one?" prompt before the run. Dead ends get foll
 | Infra / DevOps | Docker Compose, GitHub Actions (`.github/workflows/ci.yml`) |
 | AI | OpenAI-compatible API: Groq `openai/gpt-oss-120b` by default, OpenAI or Gemini by `LLM_PROVIDER`, or `LLM=off` for rules |
 | Monitoring | Prometheus metrics at `/metrics`, health at `/api/health`, Prometheus on :9090 |
-| MCP | Stdio server in `mcp/` (`sworn-mcp`) for Cursor, Claude Desktop, VS Code, and other MCP hosts |
+| MCP | `mcp/` service on :3003 (streamable HTTP) + stdio via `docker compose run` or local `sworn-mcp` |
 
 On "validation records": the 8004 SDK's validation registry is archived (its calls throw). Verifier verdicts
 are stored as validation records in Postgres (`/api/runs/{id}/validations`). On-chain, each agent's feedback
@@ -72,44 +72,39 @@ The `/app` debugger shows Plan, Sources, Evidence, Hiring, Validations, Timing, 
 
 ### MCP (IDE / AI hosts)
 
-With the stack running on `:3001`:
+`docker compose up --build` also starts **mcp** on **:3003** (streamable HTTP → `http://localhost:3003/mcp`).
 
-```bash
-cd mcp && pip install -e .
-sworn-mcp   # stdio; set SWORN_API_URL if the API is not localhost:3001
+**Flow:** call `sworn_init` first, then `research_brief` / `research_standard` / `research_deep` (or `run_research`). Then `get_evidence` / `get_hiring` / `debug_*`.
+
+**Cursor** (`.cursor/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "sworn": { "url": "http://localhost:3003/mcp" }
+  }
+}
 ```
 
-**Flow:** call `sworn_init` first (returns what Sworn does, full command catalog, defaults, and call examples — surface the `guide` field; stop if the user only asked to init). On a later turn, prenamed `research_brief` / `research_standard` (default) / `research_deep` (or `run_research` with `length` / `reasoning`) reuses the same MCP session. Then `get_evidence` / `get_hiring` / `debug_*`. Other tools return `not_initialized` until `sworn_init` succeeds. Do not shell-wrap init + research.
-
-**Cursor** (`.cursor/mcp.json` or user MCP settings):
+**Claude Desktop** (stdio through Docker, adjust the compose path):
 
 ```json
 {
   "mcpServers": {
     "sworn": {
-      "command": "sworn-mcp",
-      "env": { "SWORN_API_URL": "http://localhost:3001" }
+      "command": "docker",
+      "args": [
+        "compose", "-f", "D:/Hackathon/vvce-hackathon/docker-compose.yml",
+        "run", "--rm", "-T", "-e", "MCP_TRANSPORT=stdio", "mcp"
+      ]
     }
   }
 }
 ```
 
-**Claude Desktop** (`claude_desktop_config.json`):
+Or install locally (`cd mcp && pip install -e .`) and run `sworn-mcp` with `SWORN_API_URL=http://localhost:3001`.
 
-```json
-{
-  "mcpServers": {
-    "sworn": {
-      "command": "sworn-mcp",
-      "env": { "SWORN_API_URL": "http://localhost:3001" }
-    }
-  }
-}
-```
-
-**VS Code** (MCP support / Copilot): same stdio command and `SWORN_API_URL` env.
-
-Host skill packs (optional guidance for agents that load skills): [`skills/sworn-research/SKILL.md`](skills/sworn-research/SKILL.md), [`skills/sworn-debug/SKILL.md`](skills/sworn-debug/SKILL.md).
+Host skill packs: [`skills/sworn-research/SKILL.md`](skills/sworn-research/SKILL.md), [`skills/sworn-debug/SKILL.md`](skills/sworn-debug/SKILL.md).
 
 From the command line:
 
@@ -152,7 +147,7 @@ search for the whole question does not surface both gold articles. That is a rea
 | `backend/app/sources.py`, `rules.py`, `llm.py` | Wikipedia + quote matching, rule-based mode, LLM client |
 | `registry/server.js` | Solana bridge: isItAlive, getSummary, giveFeedback, registerAgent |
 | `frontend/src/` | Results page: answer, plan, sources, evidence, hiring, validations, inspector, on-chain, registries, baseline, history |
-| `mcp/` | Sworn MCP server (stdio) for IDEs and AI hosts |
+| `mcp/` | Sworn MCP server (HTTP :3003 in Compose, or stdio) |
 | `skills/` | Optional host skill packs for research and debug tool use |
 
 The Chrome extension on the poster is optional and not built. Deployment (Vercel, VPS) is not set up; everything runs locally.

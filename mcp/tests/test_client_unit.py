@@ -39,8 +39,9 @@ def test_format_research_text_is_prose_not_json():
     assert '"answer"' not in text
     assert "run_1" in text
     assert "3/3 claims supported" in text
-    assert "debug_get_run" in text
-    assert "Do not dump JSON" in text
+    assert "Present this answer" not in text
+    assert "Do not dump JSON" not in text
+    assert "debug_get_run" not in text
 
 
 def test_evidence_and_hiring():

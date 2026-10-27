@@ -1,11 +1,7 @@
 {
   "mcpServers": {
     "sworn": {
-      "command": "C:\\Users\\User\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
-      "args": ["-m", "sworn_mcp"],
-      "env": {
-        "SWORN_API_URL": "http://localhost:3001"
-      }
+      "url": "http://localhost:3003/mcp"
     }
   }
 }

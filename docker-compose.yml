@@ -53,6 +53,18 @@ services:
     ports: ["3000:3000"]
     depends_on: [backend]
 
+  # Sworn MCP (streamable HTTP on :3003). IDEs can use url http://localhost:3003/mcp
+  # or stdio: docker compose run --rm -T -e MCP_TRANSPORT=stdio mcp
+  mcp:
+    build: ./mcp
+    environment:
+      SWORN_API_URL: http://backend:3001
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "3003"
+    ports: ["3003:3003"]
+    depends_on: [backend]
+
   prometheus:
     image: prom/prometheus:v2.55.1
     volumes: [./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro]

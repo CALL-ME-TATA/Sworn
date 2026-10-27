@@ -1,48 +1,73 @@
 # Sworn MCP
 
-Local stdio MCP server that talks to a running Sworn backend (`SWORN_API_URL`, default `http://localhost:3001`).
+MCP server for Sworn. Talks to the FastAPI backend (`SWORN_API_URL`).
 
 ## Flow
 
-1. **`sworn_init`** — open the MCP session: health + product description + full command catalog with **defaults** and **call examples** (call once first; surface the `guide` field; stop if the user only asked to init)
-2. **Later turn:** `research_brief` / `research_standard` / `research_deep` (or `run_research`) — same MCP process reuses the session; returns **plain text**, not JSON
-3. **`get_evidence` / `get_hiring`** — inspect the run
-4. **`debug_get_run`** — full JSON report (**only when the user asks for a report**)
-5. **other `debug_*`** / **`sworn_status`** — engineering dumps / session check
+1. **`sworn_init`** — session open: health + product description + command catalog
+2. **`research_brief` / `research_standard` / `research_deep`** (or `run_research`) — plain-text answer
+3. **`get_evidence` / `get_hiring`** — inspect
+4. **`debug_*`** — engineering dumps (JSON only when asked)
 
-Defaults: unspecified research → `research_standard`; `run_research` → `length=medium`, `reasoning=standard`.
+## Docker (recommended)
 
-Other tools return `not_initialized` (with the same catalog) until `sworn_init` succeeds. Do not shell-wrap init + research — that loses the in-process session.
-
-## Install
+With the stack:
 
 ```bash
-cd mcp && pip install -e .
+docker compose up --build
 ```
 
-## Run (stdio)
+MCP listens at **http://localhost:3003/mcp** (streamable HTTP).
 
-```bash
-# Backend must already be up (docker compose up)
-sworn-mcp
-# or: python -m sworn_mcp
-```
-
-Hosts (Cursor / Claude Desktop) launch this via MCP config — do not expect terminal output; stdio waits for the client.
-
-## Cursor (`.cursor/mcp.json`)
+### Cursor (`.cursor/mcp.json`)
 
 ```json
 {
   "mcpServers": {
     "sworn": {
-      "command": "sworn-mcp",
-      "env": { "SWORN_API_URL": "http://localhost:3001" }
+      "url": "http://localhost:3003/mcp"
     }
   }
 }
 ```
 
-In Agent chat: first “sworn init” (see the catalog), then in a follow-up message “research_brief: …”
+### Claude Desktop / stdio via Docker
 
-See the repo root README for Claude Desktop snippets and skill packs under `skills/`.
+If the host only supports stdio:
+
+```json
+{
+  "mcpServers": {
+    "sworn": {
+      "command": "docker",
+      "args": [
+        "compose", "-f", "D:/Hackathon/vvce-hackathon/docker-compose.yml",
+        "run", "--rm", "-T",
+        "-e", "MCP_TRANSPORT=stdio",
+        "mcp"
+      ]
+    }
+  }
+}
+```
+
+(Adjust the compose file path for your machine.)
+
+## Local install (no Docker)
+
+```bash
+cd mcp && pip install -e .
+set SWORN_API_URL=http://localhost:3001
+sworn-mcp
+```
+
+Env:
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `SWORN_API_URL` | `http://localhost:3001` | Backend API |
+| `MCP_TRANSPORT` | `stdio` | `stdio` \| `sse` \| `streamable-http` |
+| `MCP_HOST` | `127.0.0.1` | HTTP bind (use `0.0.0.0` in Docker) |
+| `MCP_PORT` | `3003` | HTTP port |
+
+See repo root README for skill packs under `skills/`.
