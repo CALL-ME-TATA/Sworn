@@ -5,7 +5,7 @@ from datetime import date
 from itertools import zip_longest
 
 from . import rules
-from .config import CONFIG
+from .config import CONFIG, LENGTHS, REASONING
 from .llm import ask
 from .sources import quote_in, search_web, search_wikipedia, source_text, title_of, wiki_url
 
@@ -14,22 +14,28 @@ LLM_PAGE_CHARS = 40000   # model mode ranks sentences from most of each page, so
 SHORTLIST = 20           # facts the reasoner chooses from; about 1k tokens, well under Groq's free 8k tokens/minute
 
 
-async def plan_question(question: str) -> list[dict]:
+def level(inp) -> dict:
+    """The run's reasoning level; standard when the caller (a benchmark, an outside orchestrator) does not say."""
+    return REASONING.get(inp.get("reasoning"), REASONING["standard"])
+
+
+async def plan_question(question: str, lvl: dict = REASONING["standard"]) -> list[dict]:
     """[{question, search, web}]: only the sub-questions the answer needs, each with a focused Wikipedia query
     and a web search query."""
+    n = lvl["subquestions"]
     if not CONFIG.LLM:
-        return [{"question": q, "search": q, "web": q} for q in rules.plan(question, CONFIG.SUBQUESTIONS)]
+        return [{"question": q, "search": q, "web": q} for q in rules.plan(question, n)]
     res = await ask(
         f"Plan research for this question using Wikipedia{' and a web search engine' if CONFIG.WEB else ''}. Today is {date.today():%d %B %Y}.\n"
         f"Question: {question}\n\n"
-        f"Break it into 1 to {CONFIG.SUBQUESTIONS} self-contained sub-questions that together cover what a complete answer needs: "
+        f"Break it into 1 to {n} self-contained sub-questions that together cover what a complete answer needs: "
         "every part the user asked about, plus the key context that makes the answer useful (for example when and how, "
         "or why it matters, if the question implies it). Do not add unrelated background or definition questions. "
         'For each, write "search": a short Wikipedia search query naming the most specific article likely to hold the answer '
         '(for example "2026 Valorant Champions", not "who won VCT"), and "web": a web search query a person would type '
         '(for example "32GB DDR5 SO-DIMM laptop RAM price"). Add a year to a query only if the question asks about a specific time.\n'
         'Reply with JSON only: {"subquestions":[{"question":"...","search":"...","web":"..."}]}',
-        json_mode=True,
+        json_mode=True, effort=lvl["effort"],
     )
     plan = []
     for s in res.get("subquestions", []):
@@ -37,11 +43,11 @@ async def plan_question(question: str) -> list[dict]:
             s = {"question": s}
         if isinstance(s, dict) and s.get("question"):
             plan.append({"question": s["question"], "search": s.get("search") or s["question"], "web": s.get("web") or s["question"]})
-    return plan[:CONFIG.SUBQUESTIONS]
+    return plan[:n]
 
 
 async def planner(inp):
-    return {"subquestions": await plan_question(str(inp.get("question", "")))}
+    return {"subquestions": await plan_question(str(inp.get("question", "")), level(inp))}
 
 
 async def retriever(inp):
@@ -67,9 +73,10 @@ async def reader(inp):
     return {"facts": rules.pick_sentences(query, pages, SHORTLIST if CONFIG.LLM else 3)}
 
 
-async def reasoner(inp, style: str, count: int):
+async def reasoner(inp, style: str):
     """Infers which facts answer the sub-question and states each as a claim. The quote stays the fact's exact sentence."""
-    facts = [f for f in inp.get("facts", []) if isinstance(f, dict) and f.get("quote") and f.get("source_url")]
+    count = level(inp)["claims"]
+    facts =[f for f in inp.get("facts", []) if isinstance(f, dict) and f.get("quote") and f.get("source_url")]
     if not facts:
         return {"claims": []}
     if not CONFIG.LLM:
@@ -83,7 +90,7 @@ async def reasoner(inp, style: str, count: int):
         "For prices and other facts that change, keep any date or place the sentence gives. "
         "If no sentence answers the sub-question, return an empty list; that is better than an off-topic claim.\n"
         'Reply with JSON only: {"claims":[{"pick":<sentence number>,"text":"..."}]}',
-        json_mode=True,
+        json_mode=True, effort=level(inp)["effort"],
     )
     claims = []
     for c in res.get("claims", []):
@@ -120,20 +127,27 @@ async def generator(inp):
     if not CONFIG.LLM:
         return {"answer": rules.write(claims)}
     listing = "\n".join(f"[{c['id']}] {c['text']}" for c in claims)
+    lo, hi = LENGTHS.get(inp.get("length"), LENGTHS["medium"])
+    lvl = level(inp)
+    body = (f"- Then add one paragraph of 2 to 4 sentences with the most useful detail, about {lo} to {hi} words in all.\n"
+            if hi <= 100 else
+            f"- Then explain in {'2 to 4' if hi <= 300 else '4 to 6'} paragraphs of 2 to 5 sentences each, about {lo} to {hi} words in all "
+            "(shorter if there are only a few claims). Never put a single sentence in a paragraph of its own, except the opening sentence.\n")
     answer = await ask(
         f"Question: {question}\n\nVerified claims:\n{listing}\n\n"
         "Write a complete, well-organised answer using only these claims.\n"
         "- Start with one sentence that answers the question directly (who, what, when or how), with no preamble.\n"
-        "- Then explain in 2 to 4 paragraphs of 2 to 4 sentences each, about 150 to 300 words in all (shorter if there are only a few claims). "
-        "Never put a single sentence in a paragraph of its own, except the opening sentence. "
-        "Cover each part of the question and give the useful detail the claims hold: dates, names, numbers, causes and effects.\n"
+        + body +
+        "- Cover each part of the question and give the useful detail the claims hold: dates, names, numbers, causes and effects.\n"
+        + ("- Go beyond listing facts: explain how they connect, and the reasons and consequences the claims give.\n" if lvl["effort"] != "low" else "") +
         "- Use every claim that helps answer the question and leave out the ones that do not. Group related claims; "
         'where several parallel facts fit better as a list, use a short list with each item on its own line starting with "- ".\n'
         "- Separate paragraphs with a blank line. Plain text only: no headings, no bold.\n"
         '- If the claims do not contain the answer, say so plainly first (for example "The sources found do not say who won"), '
         "then give what they do say that is closely related.\n"
         '- Put the claim ID in square brackets right after the full stop of every sentence or list item that uses it, like "... in 1928. [c1]".\n'
-        "- Do not add facts that are not in the claims. Reply with the answer text only."
+        "- Do not add facts that are not in the claims. Reply with the answer text only.",
+        effort=lvl["effort"],
     )
     return {"answer": answer.strip()}
 
@@ -156,7 +170,7 @@ HANDLERS = {
     "retriever-a": retriever,
     "retriever-b": retriever,
     "reader-a": reader,
-    "reasoner-a": lambda inp: reasoner(inp, "Prefer specific numbers, dates, names, causes and effects.", 5),
+    "reasoner-a": lambda inp: reasoner(inp, "Prefer specific numbers, dates, names, causes and effects."),
     "verifier-a": verifier,
     "generator-a": generator,
     "bad-liar": bad_liar,

@@ -12,7 +12,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from . import store
 from .agents import HANDLERS
 from .llm import ProviderLimit
-from .config import AGENT_LIST, CONFIG, DATA
+from .config import AGENT_LIST, CONFIG, DATA, LENGTHS, REASONING
 from .orchestrator import clarify, run
 from .registry import list_agents, registration_file
 from .sources import seed_cache
@@ -111,12 +111,15 @@ async def start_run(request: Request):
     question = str(body.get("question") or "").strip()[:300]
     if not question:
         raise HTTPException(400, "question is required")
+    length, reasoning = body.get("length") or "medium", body.get("reasoning") or "standard"
+    if length not in LENGTHS or reasoning not in REASONING:
+        raise HTTPException(400, f"length must be one of {list(LENGTHS)} and reasoning one of {list(REASONING)}")
     if not await store.redis.set("run:lock", "1", nx=True, ex=600):
         raise HTTPException(409, "a run is already in progress")
 
     async def go():
         try:
-            await run(question, kill=bool(body.get("kill")))
+            await run(question, kill=bool(body.get("kill")), length=length, reasoning=reasoning)
         except Exception as err:  # noqa: BLE001
             print(f"run failed: {err}")
         finally:

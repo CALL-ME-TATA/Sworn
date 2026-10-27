@@ -2,7 +2,7 @@
 import asyncio
 
 from app import bench
-from app.orchestrator import cited_ids
+from app.orchestrator import cited_ids, split_citations
 
 
 def test_answer_match_is_squad_style():
@@ -24,6 +24,7 @@ def test_citations_need_known_ids_and_a_citation_on_every_sentence():
     assert bench._citations("Fleming found it in 1928. [c1] It saved many lives and changed medicine.", allowed) == 0.5
     assert bench._citations("No citations at all here, just a long sentence.", allowed) == 0.0
     assert cited_ids("x [c1] y [c12]") == ["c1", "c12"]
+    assert split_citations("It sank. [c1 c2, c5] It was 1912. [c3]") == "It sank. [c1][c2][c5] It was 1912. [c3]"
 
 
 def test_quotes_must_come_from_the_given_facts():

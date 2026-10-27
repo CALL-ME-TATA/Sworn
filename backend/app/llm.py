@@ -52,12 +52,12 @@ def models() -> list[str]:
     return [CONFIG.MODEL] + [m for m in FALLBACKS.get(CONFIG.PROVIDER, []) if m != CONFIG.MODEL]
 
 
-async def _complete(model: str, messages: list[dict], json_mode: bool) -> str:
+async def _complete(model: str, messages: list[dict], json_mode: bool, effort: str) -> str:
     """One completion. A short per-minute pause (a few seconds) or a dropped connection is retried here;
     anything longer is raised, so the caller can switch model or report the provider as busy."""
     for attempt in range(1, 4):
         try:
-            return await _create(model, messages, json_mode)
+            return await _create(model, messages, json_mode, effort)
         except RateLimitError as err:
             msg, wait = str(err), _wait_seconds(str(err))
             if "per day" in msg or "(TPD)" in msg or "(RPD)" in msg or wait is None or wait > 8 or attempt == 3:
@@ -76,30 +76,30 @@ async def _complete(model: str, messages: list[dict], json_mode: bool) -> str:
     raise RuntimeError("unreachable")
 
 
-async def _create(model: str, messages: list[dict], json_mode: bool) -> str:
+async def _create(model: str, messages: list[dict], json_mode: bool, effort: str) -> str:
     res = await client().chat.completions.create(
         model=model,
         messages=messages,
         temperature=0.2,
         # Groq counts the reserved output against the per-minute token budget (8,000 on the free tier), so keep it modest;
-        # 2,000 still fits the reasoning plus a 300-word answer.
-        max_completion_tokens=2000,
+        # 2,000 still fits low-effort reasoning plus a 300-word answer, 4,000 fits more reasoning plus a 500-word one.
+        max_completion_tokens=2000 if effort == "low" else 4000,
         # gpt-oss models reason before answering, inside the same token cap; on a long answer they can spend it all and
-        # return nothing. These are well-specified tasks, so low effort is enough and uses far fewer tokens per minute.
-        **({"reasoning_effort": "low"} if "gpt-oss" in model else {}),
+        # return nothing. Low effort is the default; the user's "high reasoning" asks for more.
+        **({"reasoning_effort": effort} if "gpt-oss" in model else {}),
         **({"response_format": {"type": "json_object"}} if json_mode else {}),
     )
     return res.choices[0].message.content or ""
 
 
-async def ask(prompt: str, *, json_mode: bool = False, system: str | None = None):
+async def ask(prompt: str, *, json_mode: bool = False, system: str | None = None, effort: str = "low"):
     messages = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
     for model in models():
         if _exhausted.get(model, 0) > time.monotonic():
             continue
         try:
             for attempt in (1, 2):
-                text = await _complete(model, messages, json_mode)
+                text = await _complete(model, messages, json_mode, effort)
                 if not text.strip():  # it ran out of tokens before answering: let the next model try
                     print(f"{model}: empty reply, trying the next model")
                     break

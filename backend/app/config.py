@@ -41,6 +41,15 @@ class CONFIG:
     WEB = bool(os.getenv("TAVILY_API_KEY"))
 
 
+# What the user picks per run. Length: the answer's word range. Reasoning: sub-questions researched, claims kept per
+# sub-question and how hard the model thinks; light is fastest, high takes longer and explains more.
+LENGTHS = {"short": (60, 100), "medium": (150, 300), "long": (350, 500)}
+REASONING = {
+    "light": {"subquestions": 2, "claims": 3, "effort": "low"},
+    "standard": {"subquestions": CONFIG.SUBQUESTIONS, "claims": 5, "effort": "low"},
+    "high": {"subquestions": 4, "claims": 7, "effort": "medium"},
+}
+
 # OASF skills each role is discovered by (slugs must be in the 8004-solana SDK's getAllSkills() list).
 ROLE_SKILLS = {
     "planner": ["natural_language_processing/analytical_reasoning/problem_solving"],

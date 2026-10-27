@@ -24,7 +24,7 @@ def test_daily_limit_falls_back_then_gives_up(monkeypatch):
     llm._exhausted.clear()
     tried = []
 
-    async def fake(model, messages, json_mode):
+    async def fake(model, messages, json_mode, effort):
         tried.append(model)
         if model == "openai/gpt-oss-120b":
             raise limit(model)
@@ -35,7 +35,7 @@ def test_daily_limit_falls_back_then_gives_up(monkeypatch):
     assert tried == ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
     assert llm.model_in_use() == "openai/gpt-oss-20b"
 
-    async def all_out(model, messages, json_mode):
+    async def all_out(model, messages, json_mode, effort):
         raise limit(model)
 
     monkeypatch.setattr(llm, "_complete", all_out)
@@ -48,7 +48,7 @@ def test_per_minute_limit_on_every_model_is_busy(monkeypatch):
     monkeypatch.setattr(llm.CONFIG, "PROVIDER", "groq")
     llm._exhausted.clear()
 
-    async def per_minute(model, messages, json_mode):
+    async def per_minute(model, messages, json_mode, effort):
         raise limit(model, per="tokens per minute (TPM)", wait="4.2s")
 
     monkeypatch.setattr(llm, "_complete", per_minute)
@@ -66,7 +66,7 @@ def test_tool_call_quirk_moves_to_the_next_model(monkeypatch):
     llm._exhausted.clear()
     tried = []
 
-    async def fake(model, messages, json_mode):
+    async def fake(model, messages, json_mode, effort):
         tried.append(model)
         if model == "openai/gpt-oss-120b":
             res = httpx.Response(400, request=httpx.Request("POST", "https://api.groq.com/openai/v1/chat/completions"))

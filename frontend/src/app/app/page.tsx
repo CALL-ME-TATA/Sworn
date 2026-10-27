@@ -6,7 +6,30 @@ import { Wordmark, Icon } from "@/components/ui";
 import { Benchmarks } from "@/components/Benchmarks";
 import { FailoverRecord, Timing } from "@/components/Timing";
 import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, Percent, Record, Registries, Scoreline, Steps } from "@/components/Views";
-import { askClarify, getJson, postJson, seconds, type Clarify, type Compare, type Run } from "@/lib/run";
+import { askClarify, getJson, LENGTHS, postJson, REASONINGS, seconds, type Clarify, type Compare, type Length, type Reasoning, type Run } from "@/lib/run";
+
+/** A small segmented radio group: one choice of a few, each with a short hint underneath its label. */
+function Choice<T extends string>({ name, label, options, value, onChange }: {
+  name: string; label: string; value: T; onChange: (v: T) => void;
+  options: { id: T; label: string; hint: string; about: string }[];
+}) {
+  return (
+    <fieldset className="flex items-center gap-2.5">
+      <legend className="sr-only">{label}</legend>
+      <span aria-hidden className="w-16 text-xs text-faint sm:w-auto">{label}</span>
+      <span className="inline-flex rounded-md border border-line bg-bone p-0.5">
+        {options.map((o) => (
+          <label key={o.id} title={o.about}
+            className={`flex cursor-pointer flex-col items-center rounded px-2.5 py-1 leading-tight transition-colors select-none has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ink ${value === o.id ? "bg-card text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)]" : "text-muted hover:text-ink"}`}>
+            <input type="radio" name={name} value={o.id} checked={value === o.id} onChange={() => onChange(o.id)} className="sr-only" />
+            <span className="text-[13px] font-medium">{o.label}</span>
+            <span className="font-mono text-[10px] whitespace-nowrap text-faint">{o.hint}</span>
+          </label>
+        ))}
+      </span>
+    </fieldset>
+  );
+}
 
 const EXAMPLES = [
   "How was penicillin discovered and why did it matter?",
@@ -36,6 +59,8 @@ export default function App() {
   const [compare, setCompare] = useState<Compare | null>(null);
   const [question, setQuestion] = useState("");
   const [kill, setKill] = useState(false);
+  const [length, setLength] = useState<Length>("medium");
+  const [reasoning, setReasoning] = useState<Reasoning>("standard");
   const [clarify, setClarify] = useState<ClarifyBox>(null);
   const [notice, setNotice] = useState("");
   const input = useRef<HTMLTextAreaElement>(null);
@@ -71,7 +96,7 @@ export default function App() {
     setClarify(null);
     setQuestion(q);
     setViewing(null);
-    const res = await postJson("/api/run", { question: q, kill });
+    const res = await postJson("/api/run", { question: q, kill, length, reasoning });
     if (!res.ok) {
       setNotice((await res.json().catch(() => ({})))?.detail ?? `Could not start the run (HTTP ${res.status}). Is the backend running?`);
       return;
@@ -134,7 +159,11 @@ export default function App() {
             placeholder="Ask a research question…"
             className="block w-full resize-none bg-transparent px-4 pt-3 text-lg text-ink placeholder:text-faint focus:outline-none"
           />
-          <div className="flex flex-wrap items-center justify-between gap-3 px-2 pb-1">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-2 pt-1 pb-3">
+            <Choice name="length" label="Length" options={LENGTHS} value={length} onChange={setLength} />
+            <Choice name="reasoning" label="Reasoning" options={REASONINGS} value={reasoning} onChange={setReasoning} />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-2 pt-2 pb-1">
             <label className="flex cursor-pointer items-center gap-2.5 text-sm text-muted select-none"
               title="Takes the main retriever offline mid-run so a backup has to take over. It is switched back on when the run ends.">
               <span className="relative inline-flex">
@@ -181,6 +210,7 @@ export default function App() {
                 : <span className="tag tag-yellow"><span className="pulse size-1.5 rounded-full bg-yellow" />running</span>}
               <span>{done ? `took ${seconds(r.started_at, r.finished_at!)} s · ${new Date(r.finished_at!).toLocaleString()}` : `started ${new Date(r.started_at).toLocaleTimeString()}`}</span>
               <span className="font-mono">{r.mode}</span>
+              {r.length && <span>{LENGTHS.find((l) => l.id === r.length)?.label} answer · {REASONINGS.find((l) => l.id === r.reasoning)?.label.toLowerCase()} reasoning</span>}
               {viewing && <button type="button" onClick={() => setViewing(null)} className="underline underline-offset-4 hover:text-ink">back to latest run</button>}
             </div>
             <h1 className="serif mt-0 mb-8 text-[clamp(30px,4.4vw,46px)] [text-wrap:balance]">{r.question}</h1>

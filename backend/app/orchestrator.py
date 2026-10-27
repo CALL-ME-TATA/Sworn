@@ -16,7 +16,7 @@ import httpx
 from langgraph.graph import END, START, StateGraph
 
 from . import bench, llm, metrics, store
-from .config import CONFIG, ROLES
+from .config import CONFIG, REASONING, ROLES
 from .llm import ask
 from .registry import discover, get_score, give_feedback, is_alive, operator_wallets, registry_stats
 from .sources import seed_cache
@@ -26,6 +26,11 @@ _http = httpx.AsyncClient()
 
 def cited_ids(answer: str) -> list[str]:
     return re.findall(r"\[(c\d+)\]", answer or "")
+
+
+def split_citations(answer: str) -> str:
+    """Models sometimes group citations ("[c1 c2]", "[c1, c2]"); write them one per bracket, as the rest expects."""
+    return re.sub(r"\[(c\d+(?:[\s,;]+c\d+)+)\]", lambda m: "".join(f"[{x}]" for x in re.findall(r"c\d+", m[1])), answer or "")
 
 
 class AgentError(Exception):
@@ -127,10 +132,10 @@ class State(TypedDict, total=False):
 
 
 class Run:
-    def __init__(self, question: str, *, feedback=True, kill=False, log=print, latest=True):
+    def __init__(self, question: str, *, feedback=True, kill=False, log=print, latest=True, length="medium", reasoning="standard"):
         run_id = f"run_{int(time.time() * 1000)}"
         self.r = {
-            "run_id": run_id, "question": question, "started_at": now(),
+            "run_id": run_id, "question": question, "started_at": now(), "length": length, "reasoning": reasoning,
             "mode": f"{CONFIG.PROVIDER} · {CONFIG.MODEL}" if CONFIG.LLM else "rule-based",
             "registry": None, "plan": [], "tasks": [], "hiring": [], "team": {}, "claims": [], "answer": None,
             "failovers": [], "dead": [], "feedback": [], "metrics": {},
@@ -327,8 +332,8 @@ class Run:
     async def step_plan(self):
         if self.r["plan"]:
             return
-        agent, out = await self.call("planner", {"question": self.r["question"]}, "p1")
-        plan = out["subquestions"][:CONFIG.SUBQUESTIONS]
+        agent, out = await self.call("planner", {"question": self.r["question"], "reasoning": self.r["reasoning"]}, "p1")
+        plan = out["subquestions"][:REASONING[self.r["reasoning"]]["subquestions"]]
         self.r["plan"] = [p["question"] for p in plan]
         self.r["tasks"] = [{"id": f"t{i + 1}", "question": p["question"], "search": p.get("search") or p["question"], "web": p.get("web") or p["question"],
                             "planned_by": agent["asset"], "planned_by_name": agent["name"]} for i, p in enumerate(plan)]
@@ -360,7 +365,7 @@ class Run:
         for t in self.r["tasks"]:
             if t.get("reasoned_by"):
                 continue
-            agent, out = await self.call("reasoner", {"sub_question": t["question"], "question": self.r["question"], "facts": t["facts"]}, f"{t['id']}-reason")
+            agent, out = await self.call("reasoner", {"sub_question": t["question"], "question": self.r["question"], "facts": t["facts"], "reasoning": self.r["reasoning"]}, f"{t['id']}-reason")
             t.update(reasoned_by=agent["asset"], reasoned_by_name=agent["name"])
             for c in out["claims"]:
                 self.r["claims"].append({
@@ -398,7 +403,9 @@ class Run:
             return
         allowed = {c["id"] for c in verified}
         for attempt in (1, 2):
-            agent, out = await self.call("generator", {"question": self.r["question"], "claims": [{"id": c["id"], "text": c["text"]} for c in verified]}, f"g{attempt}")
+            agent, out = await self.call("generator", {"question": self.r["question"], "claims": [{"id": c["id"], "text": c["text"]} for c in verified],
+                                                       "length": self.r["length"], "reasoning": self.r["reasoning"]}, f"g{attempt}")
+            out["answer"] = split_citations(out["answer"])
             cited = cited_ids(out["answer"])
             if cited and all(x in allowed for x in cited):
                 self.r.update(answer=out["answer"], written_by=agent["asset"], written_by_name=agent["name"])

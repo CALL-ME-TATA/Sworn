@@ -35,8 +35,22 @@ export type RegistryStats = {
   total: number; with_profile: number; with_endpoint: number; with_skills: number;
   sati?: { total: number; with_profile: number; with_endpoint: number; synced_at: string };
 };
+export type Length = "short" | "medium" | "long";
+export type Reasoning = "light" | "standard" | "high";
+/** What the user picks before a run. Word ranges and research depth match backend/app/config.py (LENGTHS, REASONING). */
+export const LENGTHS: { id: Length; label: string; hint: string; about: string }[] = [
+  { id: "short", label: "Short", hint: "~80 words", about: "A direct answer and one paragraph: 60 to 100 words" },
+  { id: "medium", label: "Medium", hint: "~200 words", about: "A direct answer and 2 to 4 paragraphs: 150 to 300 words" },
+  { id: "long", label: "Long", hint: "~450 words", about: "A direct answer and 4 to 6 paragraphs: 350 to 500 words" },
+];
+export const REASONINGS: { id: Reasoning; label: string; hint: string; about: string }[] = [
+  { id: "light", label: "Light", hint: "fastest", about: "2 sub-questions, up to 3 claims each, quick model reasoning" },
+  { id: "standard", label: "Standard", hint: "balanced", about: "3 sub-questions, up to 5 claims each" },
+  { id: "high", label: "High", hint: "most detail", about: "4 sub-questions, up to 7 claims each, more model reasoning, and the answer explains how the facts connect" },
+];
 export type Run = {
   run_id: string; question: string; started_at: string; finished_at?: string; mode: string; error?: string;
+  length?: Length; reasoning?: Reasoning;
   registry: RegistryStats | null; plan: string[]; tasks: Task[]; hiring: Hiring[]; team: Partial<Record<Role, Member[]>>;
   claims: Claim[]; answer: string | null; written_by_name?: string; failovers: Failover[]; dead: string[]; feedback: Feedback[];
   timings?: Partial<Record<string, number>>; calls?: Call[]; kill?: { agent: string; at_ms: number } | null; round_trip_ms?: number | null;
