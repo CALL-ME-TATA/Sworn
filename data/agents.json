@@ -48,5 +48,35 @@
     "asset": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX",
     "role": "generator",
     "signature": "2HDxsmfzJNvSHr1jbx5oSTKs9G7nNQMD7fvUVHg572LkHtdfp5Sf69KHCVuMuNoAvEChZPezeGWULTSsrGbpPo8X"
+  },
+  "planner-b": {
+    "asset": "5UN6NyTbepjeykudg6Vi3VXo5ze5DaX8pf2vNtXjCvL2",
+    "role": "planner",
+    "signature": "2c5xHq3tWE4eKZZobE7TaksfXGZejJdVjDhgY6xMnc4RNx986m6z4tQswpEaatJvb6yPs1ZMAmaPv5BRpHuizS5f"
+  },
+  "retriever-c": {
+    "asset": "3cyW92VugNhfR3iQnonTdou8f4txFFMZ8PgHLfbpJXmY",
+    "role": "retriever",
+    "signature": "2Nzq8EtZTN7shmzipVgFzo2VkMVLHpG2cxVAyJHxmX2DK8pSbB5fWpT4thwwTi39wBvoEjg24DLoiAAZ8JmkwVWd"
+  },
+  "reader-b": {
+    "asset": "E58bd5xdxfY9yxfdmJLGkYdYwWb9ybPz6gGVsf8WPxcM",
+    "role": "reader",
+    "signature": "3MNp7NR3PHmAybHgvKmd2TbHNVHzqCYDUjgw5bG1uHapMWhxLgFg4Ch9ejpeTkWkHFBo6NyfqrWmQLiCRNZUpjym"
+  },
+  "reasoner-b": {
+    "asset": "GFwpMC6X6qWKdktLUoYCC42m3z58sLs49sKxtqjPfjt8",
+    "role": "reasoner",
+    "signature": "3eW79uy6dcJZPXTKQZmnWP6CCh51eo4d79VK6g2FmsS7KdprvYihh7X19PkefRrgcM5XC8yNa9sWSVC292eazXwu"
+  },
+  "verifier-b": {
+    "asset": "HMTiqSpd11nv6oHgzUkeutnEdAssxNzK3Bg6WRMjNRoX",
+    "role": "verifier",
+    "signature": "2CDYSLiKnJjG48yVzVghwMpWWhcfmRk5qmvyk6A3zQYsTo4oy3P2UKcUjXAjJkknScwKRd2xk4NhAZZmmSUS4sSf"
+  },
+  "generator-b": {
+    "asset": "EGR1hXZZ13Hwa5MQZ5aQzXjmcNXkH7X2WnBTjdPYZQiM",
+    "role": "generator",
+    "signature": "4vutaq3Wi2FsHQjsJTLof7gKggdeAx3d92v2FfuWuqR4ZHNL1CunmhJyrrBkKWDaRtk8iVXDqAjhA5PTuLfq2yRL"
   }
 }

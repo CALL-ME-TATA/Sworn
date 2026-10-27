@@ -173,6 +173,12 @@ HANDLERS = {
     "reasoner-a": lambda inp: reasoner(inp, "Prefer specific numbers, dates, names, causes and effects."),
     "verifier-a": verifier,
     "generator-a": generator,
+    "planner-b": planner,
+    "retriever-c": retriever,
+    "reader-b": reader,
+    "reasoner-b": lambda inp: reasoner(inp, "Prefer short, precise claims; keep numbers and dates."),
+    "verifier-b": verifier,
+    "generator-b": generator,
     "bad-liar": bad_liar,
     "bad-slow": bad_slow,
 }

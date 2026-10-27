@@ -72,6 +72,12 @@ AGENT_LIST = [
     {"name": "reasoner-a", "title": "Claim Builder", "role": "reasoner", "description": "Turns extracted facts into short claims that answer the sub-question, keeping each claim's exact quote."},
     {"name": "verifier-a", "title": "Fact Checker", "role": "verifier", "description": "Checks that a quote is on its source page and that it supports the claim."},
     {"name": "generator-a", "title": "Answer Writer", "role": "generator", "description": "Writes the final answer from verified claims only, citing each claim ID."},
+    {"name": "planner-b", "title": "Question Planner (2)", "role": "planner", "description": "Alternate planner: splits the question into focused sub-questions with search queries."},
+    {"name": "retriever-c", "title": "Source Finder (3)", "role": "retriever", "description": "Third retriever: fetches Wikipedia (and web when available) for a sub-question."},
+    {"name": "reader-b", "title": "Fact Extractor (2)", "role": "reader", "description": "Backup fact extractor: pulls bearing sentences with source URLs."},
+    {"name": "reasoner-b", "title": "Claim Builder (Concise)", "role": "reasoner", "description": "Builds short claims from facts; prefers concise restatements with exact quotes."},
+    {"name": "verifier-b", "title": "Fact Checker (2)", "role": "verifier", "description": "Backup verifier: checks quote presence and claim support on the source page."},
+    {"name": "generator-b", "title": "Answer Writer (2)", "role": "generator", "description": "Backup answer writer from verified claims only, citing claim IDs."},
     {"name": "bad-liar", "title": "Fake-Quote Bot", "role": "reasoner", "description": "Research reasoner."},   # invents quotes: must fail the trial
     {"name": "bad-slow", "title": "Slow Bot", "role": "retriever", "description": "Research retriever."},  # never answers in time: must time out
 ]
