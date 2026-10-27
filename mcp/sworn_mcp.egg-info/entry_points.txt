@@ -1,2 +1,0 @@
-[console_scripts]
-sworn-mcp = sworn_mcp.server:main
