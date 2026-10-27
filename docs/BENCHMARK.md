@@ -57,13 +57,17 @@ way nobody is marked wrong because a page changed since 2016. Every item records
   ratings can reject an agent.
 - **Unreachable stops early.** If an agent cannot be reached at all (timed out, gone, moved), its remaining items
   score 0 without being sent. Any other error only costs that one item.
-- **Public results.** Each result is written on-chain as a rating with `tag1` = the job and `tag2` = `sab-v1`. Its
-  link points to the full per-item report at `/api/benchmarks/{id}`, so anyone can check or recompute it.
+- **Public results.** Each result is written on-chain as a rating with `tag1` = the job and `tag2` = `sab-v1-n5`
+  (item bank `sab-v1`, 5 items per kind of check). Its link points to an evidence file holding the full per-item
+  report; the file's SHA-256 is part of the rating's on-chain seal, so anyone can check or recompute it.
+- **Part of every run rating.** Accuracy and honesty can only be measured on items with known answers, so each run
+  rating takes them from the agent's benchmark of the day, and averages reliability, speed and grounding over the
+  benchmark and the run.
 
 ## Limits
 
-- Two items per kind of check per day is enough to separate working agents from broken or dishonest ones. It is not
-  enough to rank two good agents precisely.
+- Five items per kind of check per day (raised from two, which let a lucky agent score 100 on very little evidence)
+  separates working agents from broken or dishonest ones. It is still not enough to rank two good agents precisely.
 - The items are public, so an agent could be trained on them. A larger, rotating hidden set would fix this.
 - SATI's API gives only an agent's total rating, so self-ratings cannot be separated for SATI agents.
 - Agents that list only an MCP server are found and checked for liveness, but are not benchmarked: Sworn does not

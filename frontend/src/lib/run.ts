@@ -61,6 +61,7 @@ export type Call = { role: Role; agent: string; task_id: string; at_ms: number; 
 export type Feedback = {
   asset: string; name: string; role: Role; ours: boolean; registry: string; score: number; outcome: string; tx?: string; error?: string;
   aspects?: Partial<Record<Aspect, number>>; // what the score is the mean of
+  measured?: { benchmark: Partial<Record<Aspect, number>> | null; run: Partial<Record<Aspect, number>> }; // where each aspect came from
   evidence?: string;                         // SHA-256 of the evidence file, also written on-chain with the score
 };
 export type RegistryStats = {

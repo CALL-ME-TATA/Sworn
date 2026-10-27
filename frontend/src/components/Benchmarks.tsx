@@ -28,7 +28,7 @@ export function Benchmarks() {
   return (
     <>
       <Title note="The same test for every agent in a job: the same items, the same five equally weighted aspects, graded by code, never by an AI. Items come from public datasets and are re-checked against today's Wikipedia. 60/100 is needed to be hired. Self-ratings never count.">
-        Standard benchmark <span className="tag tag-gray align-middle">sab-v1</span>
+        Standard benchmark <span className="tag tag-gray align-middle" title="Item bank sab-v1, 5 items per kind of check">sab-v1-n5</span>
       </Title>
       <dl className="mb-6 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
         {ASPECTS.map((a) => (

@@ -549,7 +549,7 @@ export function Record({ r }: { r: Run }) {
   if (!r.feedback.length) return <><Title>On-chain record</Title><Empty>When the run ends, every agent&apos;s score is written to the Solana Agent Registry and listed here with its transaction.</Empty></>;
   return (
     <>
-      <Title note="Each agent's score, written to the Solana Agent Registry by the orchestrator's wallet. A run score is the mean of what the run could measure (reliability, speed, grounding); a benchmark score (sab-v1) also covers accuracy. Every rating links to an evidence file whose SHA-256 is written on-chain with it.">On-chain record</Title>
+      <Title note="Each agent's score, written to the Solana Agent Registry by the orchestrator's wallet. A run score is the mean of five equal aspects: accuracy and honesty from the agent's benchmark of the day (SQuAD 2.0, HotpotQA, FEVER), and reliability, speed and grounding averaged over that benchmark and this run. Hover an aspect for both numbers. Every rating links to an evidence file whose SHA-256 is written on-chain with it.">On-chain record</Title>
       <div className="card overflow-x-auto px-6 py-2">
         <table className="tbl min-w-[860px]">
           <thead><tr><th>Agent</th><th>Role</th><th>Score</th><th>Made of</th><th>Kind</th><th>Evidence</th><th>Transaction</th></tr></thead>
@@ -560,10 +560,14 @@ export function Record({ r }: { r: Run }) {
                 <td className="text-muted capitalize">{f.role}</td>
                 <td className="font-mono text-ink">{f.score}</td>
                 <td className="text-xs text-muted">
-                  {f.aspects ? Object.entries(f.aspects).map(([a, v]) => <span key={a} className="mr-2 whitespace-nowrap">{a} <span className="font-mono text-ink">{Math.round(v!)}</span></span>) : "–"}
+                  {f.aspects ? Object.entries(f.aspects).map(([a, v]) => {
+                    const b = f.measured?.benchmark?.[a as keyof typeof f.aspects], run = f.measured?.run?.[a as keyof typeof f.aspects];
+                    const from = [b != null && `benchmark ${Math.round(b)}`, run != null && `this run ${Math.round(run)}`].filter(Boolean).join(" · ");
+                    return <span key={a} className="mr-2 whitespace-nowrap" title={from}>{a} <span className={`font-mono ${v! < 60 ? "text-red" : "text-ink"}`}>{Math.round(v!)}</span></span>;
+                  }) : "–"}
                 </td>
                 <td>
-                  {f.outcome === "sab-v1"
+                  {f.outcome.startsWith("sab-")
                     ? <span className="tag tag-gray">benchmark</span>
                     : <span className={`tag ${f.outcome === "passed" ? "tag-green" : "tag-red"}`}>{f.outcome === "passed" ? "run" : f.outcome}</span>}
                 </td>

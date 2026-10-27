@@ -24,6 +24,15 @@ def test_a_slow_verifier_loses_speed_and_a_dead_one_scores_zero():
     assert rate("retriever", stats(fail=1))["score"] == 0
 
 
+def test_a_flawless_run_cannot_hide_a_poor_benchmark():
+    # Perfect in the run (fast, every call answered, every claim confirmed), but half wrong on SQuAD and dishonest on
+    # unanswerable questions: accuracy and honesty come from the benchmark, the rest is averaged with the run.
+    tested = {"aspects": {"accuracy": 50.0, "grounding": 80.0, "honesty": 0.0, "reliability": 100.0, "speed": 100.0}}
+    r = rate("reasoner", stats(ok=3, secs=[2, 3, 2], claims=4), tested)
+    assert r["aspects"] == {"accuracy": 50.0, "grounding": 90.0, "honesty": 0.0, "reliability": 100.0, "speed": 100.0}
+    assert r["score"] == 68.0 and r["run"]["grounding"] == 100.0 and r["benchmark"] == tested["aspects"]
+
+
 def test_evidence_hash_does_not_depend_on_key_order():
     a = canonical({"score": 80, "agent": {"role": "reader", "name": "Fact Extractor"}})
     b = canonical({"agent": {"name": "Fact Extractor", "role": "reader"}, "score": 80})

@@ -28,19 +28,29 @@ def cited_ids(answer: str) -> list[str]:
     return re.findall(r"\[(c\d+)\]", answer or "")
 
 
-RATING_METHOD = ("Plain mean of the aspects this run could measure, on the same scale as the sab-v1 benchmark (docs/BENCHMARK.md): "
-                 "reliability = calls answered in the right shape; speed = 95th-percentile response time against the role's budget; "
-                 "grounding = share of a reasoner's claims the verifier confirmed, a generator's citation precision x coverage, "
-                 "or the share of a retriever's sub-questions whose sources gave the reader usable facts. "
-                 "Accuracy needs known answers, so only the benchmark measures it.")
+RATING_METHOD = ("Plain mean of five equally weighted aspects (docs/BENCHMARK.md). Accuracy and honesty need known answers, so they "
+                 "come only from the agent's standard benchmark of the day (SQuAD 2.0, HotpotQA, FEVER). Reliability, speed and grounding "
+                 "are measured on that benchmark and again in this run, and the two are averaged. In the run: reliability = calls "
+                 "answered in the right shape; speed = 95th-percentile response time against the role's budget; grounding = share of "
+                 "a reasoner's claims the verifier confirmed, a generator's citation precision x coverage, or the share of a "
+                 "retriever's sub-questions whose sources gave the reader usable facts. Without a benchmark, the run alone counts.")
 
 
-def rate(role: str, s: dict) -> dict:
-    """An agent's score for its work in one run, with the benchmark's aspects and averaging (bench.combine)."""
+def rate(role: str, s: dict, benchmark: dict | None = None) -> dict:
+    """An agent's score for one run: its benchmark of the day (known-answer items) together with what this run measured.
+    Each aspect is the mean of the measurements of it; the score is the plain mean of the aspects (equal weights)."""
     grounding = list(s["grounding"])
     if s["claims"]:
         grounding.append((s["claims"] - s["unsupported"]) / s["claims"])
-    return bench.combine(role, {"grounding": grounding} if grounding else {}, s["ok"], s["ok"] + s["fail"], s["secs"])
+    run = bench.combine(role, {"grounding": grounding} if grounding else {}, s["ok"], s["ok"] + s["fail"], s["secs"])["aspects"]
+    tested = (benchmark or {}).get("aspects", {})
+    aspects = {}
+    for a in bench.ASPECTS:
+        measured = [m[a] for m in (tested, run) if a in m]
+        if measured:
+            aspects[a] = round(sum(measured) / len(measured), 1)
+    return {"aspects": aspects, "score": round(sum(aspects.values()) / len(aspects), 1),
+            "weights": {a: round(1 / len(aspects), 3) for a in aspects}, "run": run, "benchmark": tested or None}
 
 
 def split_citations(answer: str) -> str:
@@ -167,6 +177,7 @@ class Run:
         self.dead: set[str] = set()
         self.pending_failover = None
         self.benchmarked: list[tuple[dict, str, dict]] = []  # fresh benchmark results, published on-chain at the end
+        self.bench_of: dict[tuple, dict] = {}  # (asset, role) -> today's benchmark report (fresh or cached), part of the run rating
         self.killed = None  # the agent the kill demo took offline; always revived before the run ends
         self._save_lock = asyncio.Lock()
         self.t0 = time.monotonic()
@@ -229,7 +240,7 @@ class Run:
         await self.save()
         started = time.monotonic()
         day = datetime.now(timezone.utc).date()
-        report = await store.todays_benchmark(agent["asset"], role, bench.VERSION, day)
+        report = await store.todays_benchmark(agent["asset"], role, bench.LABEL, day)
         cached = report is not None
         if cached and not report.get("tx") and self.feedback:
             self.benchmarked.append((agent, role, report))  # measured earlier without writing on-chain: publish it now
@@ -254,9 +265,10 @@ class Run:
                 metrics.SCREENED.labels(role, "busy", "trial").inc()
                 return None
             if not agent["asset"].startswith("unregistered"):
-                report["id"] = await store.save_benchmark(agent["asset"], agent["name"], role, bench.VERSION, day, report)
+                report["id"] = await store.save_benchmark(agent["asset"], agent["name"], role, bench.LABEL, day, report)
                 self.benchmarked.append((agent, role, report))
-        entry["bench"] = {"id": report.get("id"), "score": report["score"], "aspects": report["aspects"], "cached": cached, "version": bench.VERSION}
+        entry["bench"] = {"id": report.get("id"), "score": report["score"], "aspects": report["aspects"], "cached": cached, "version": bench.LABEL}
+        self.bench_of[(agent["asset"], role)] = report
         if report["score"] < CONFIG.BENCH_MIN_SCORE:
             weak = ", ".join(f"{a} {v:.0f}" for a, v in report["aspects"].items() if v < CONFIG.BENCH_MIN_SCORE)
             return reject("trial", f"benchmark {report['score']:.0f}/100, under {CONFIG.BENCH_MIN_SCORE} (weak: {weak})")
@@ -467,11 +479,12 @@ class Run:
         rater = (await wallets()).get("reviewer") if self.feedback else None
         items = []
         for (asset, role), s in self.stats.items():
-            rated = rate(role, s)
+            tested = self.bench_of.get((asset, role))
+            rated = rate(role, s, tested)
             score = round(rated["score"])
             outcome = "unsupported-claims" if s["unsupported"] and s["outcome"] == "passed" else s["outcome"]
             item = {"asset": asset, "name": s["name"], "role": role, "ours": s["ours"], "registry": s["registry"], "score": score,
-                    "aspects": rated["aspects"], "outcome": outcome}
+                    "aspects": rated["aspects"], "measured": {"benchmark": rated["benchmark"], "run": rated["run"]}, "outcome": outcome}
             if asset.startswith("unregistered"):
                 item["error"] = "not registered on-chain"
             elif s["registry"] == "sati" and not CONFIG.SATI_FEEDBACK:
@@ -482,6 +495,8 @@ class Run:
                     "agent": {"asset": asset, "name": s["name"], "role": role, "registry": s["registry"], "endpoint": s["endpoint"]},
                     "run": {"id": self.r["run_id"], "question": self.r["question"], "started_at": self.r["started_at"], "report": self.report_url},
                     "score": score, "aspects": rated["aspects"], "weights": rated["weights"], "outcome": outcome, "method": RATING_METHOD,
+                    "measured": {"benchmark": rated["benchmark"], "run": rated["run"]},
+                    "benchmark_report": f"{CONFIG.AGENTS_BASE_URL}/api/benchmarks/{tested['id']}" if tested and tested.get("id") else None,
                     "calls": [{k: c.get(k) for k in ("task_id", "at_ms", "ms", "ok", "error")}
                               for c in self.r["calls"] if c.get("asset") == asset and c["role"] == role],
                     "work": self.work(asset, role)})
@@ -511,7 +526,7 @@ class Run:
         # Fresh benchmark results are published too: tag1 = role, tag2 = benchmark version, with the full graded report as evidence.
         for agent, role, report in self.benchmarked:
             item = {"asset": agent["asset"], "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
-                    "score": round(report["score"]), "aspects": report["aspects"], "outcome": bench.VERSION, "benchmark_id": report["id"]}
+                    "score": round(report["score"]), "aspects": report["aspects"], "outcome": bench.LABEL, "benchmark_id": report["id"]}
             if item["registry"] == "sati" and not CONFIG.SATI_FEEDBACK:
                 item["error"] = "SATI feedback is off (set SATI_FEEDBACK=on)"
             elif self.feedback:
@@ -519,7 +534,7 @@ class Run:
                     "schema": "sworn/feedback-v1", "kind": "benchmark", "rater": rater,
                     "agent": {"asset": agent["asset"], "name": agent["name"], "role": role, "registry": item["registry"], "endpoint": agent["endpoint"]},
                     "score": item["score"], "aspects": report["aspects"], "weights": report.get("weights"),
-                    "method": "sab-v1 standard benchmark, graded by code (docs/BENCHMARK.md)",
+                    "method": f"{bench.LABEL} standard benchmark ({bench.PER_KIND} items per kind of check), graded by code (docs/BENCHMARK.md)",
                     "benchmark": {k: v for k, v in report.items() if k not in ("id", "tx")},
                     "report": f"{CONFIG.AGENTS_BASE_URL}/api/benchmarks/{report['id']}"})
             self.r["feedback"].append(item)
