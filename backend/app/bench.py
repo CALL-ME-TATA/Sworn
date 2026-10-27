@@ -23,7 +23,10 @@ VERSION = "sab-v1"
 ASPECTS = ["accuracy", "grounding", "honesty", "reliability", "speed"]
 # p95 target per role in seconds: full marks at or under it, falling to zero at three times it.
 LATENCY_BUDGET = {"planner": 6, "retriever": 4, "reader": 4, "reasoner": 10, "verifier": 6, "generator": 12}
-PER_KIND = 2  # items per kind of check in one hiring round: enough to tell good from bad, cheap on free tiers
+PER_KIND = 5  # items per kind of check in one hiring round (2 let a lucky agent score 100 on very little evidence)
+# What a result is filed and published under: the item bank and graders (VERSION) plus the sample size. A different
+# sample size is a different test, so its results are cached and tagged on-chain apart from the old ones.
+LABEL = f"{VERSION}-n{PER_KIND}"
 
 NOT_FOUND = re.compile(r"\b(do(es)? not (say|mention|state|specify|contain|provide|include|give)|not (found|available|mentioned|stated)|"
                        r"no (information|mention)|cannot be determined|(is|are) unknown|don't|doesn't)\b", re.I)
@@ -208,5 +211,5 @@ async def run(role: str, seed: str, call) -> dict:
         per_aspect.setdefault(c["aspect"], []).append(g)
         details.append({"item": c["item"], "aspect": c["aspect"], "score": round(g, 3)})
     result = combine(role, per_aspect, ok, calls, seconds)
-    return {**result, "version": VERSION, "role": role, "seed": seed, "items": details,
+    return {**result, "version": LABEL, "role": role, "seed": seed, "items": details,
             "p95_s": round(sorted(seconds)[int(round(0.95 * (len(seconds) - 1)))], 2) if seconds else None, "at": time.time()}

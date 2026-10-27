@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from . import store, trust
@@ -15,7 +15,7 @@ from .agents import HANDLERS
 from .llm import ProviderLimit
 from .config import AGENT_LIST, CONFIG, DATA, LENGTHS, REASONING
 from .orchestrator import clarify, run
-from .registry import list_agents, registration_file, wallets
+from .registry import bridge, list_agents, registration_file, wallets
 from .sources import seed_cache
 
 BY_NAME = {a["name"]: a for a in AGENT_LIST}
@@ -184,6 +184,25 @@ async def get_run(run_id: str):
 @app.get("/api/runs/{run_id}/validations")
 async def validations(run_id: str):
     return await store.validations(run_id)
+
+
+@app.get("/api/evidence/{digest}")
+async def evidence(digest: str):
+    """The evidence file behind one on-chain rating, exactly as hashed: its SHA-256 equals the hash in the URL and on-chain."""
+    body = await store.get_evidence(digest.lower())
+    if body is None:
+        raise HTTPException(404, "no evidence file with that hash")
+    return Response(content=body.encode(), media_type="application/json")
+
+
+@app.get("/api/evidence-check")
+async def evidence_check(asset: str, tx: str, file_hash: str):
+    """Checks a file hash against a rating's on-chain SEAL hash (through the registry bridge). The page hashes the file
+    itself and sends only the hash, so the check does not rely on this server's copy of the file."""
+    try:
+        return await bridge("GET", "/seal-check", params={"asset": asset, "tx": tx, "fileHash": file_hash.lower()})
+    except RuntimeError as err:
+        raise HTTPException(502, str(err)) from None
 
 
 @app.get("/api/registry/trust")

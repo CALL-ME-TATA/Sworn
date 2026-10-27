@@ -18,7 +18,7 @@ from langgraph.graph import END, START, StateGraph
 from . import bench, llm, metrics, store, trust
 from .config import CONFIG, REASONING, ROLES
 from .llm import ask
-from .registry import discover, get_score, give_feedback, is_alive, operator_wallets, registry_stats
+from .registry import discover, get_score, give_feedback, is_alive, operator_wallets, registry_stats, wallets
 from .sources import seed_cache
 
 _http = httpx.AsyncClient()
@@ -26,6 +26,31 @@ _http = httpx.AsyncClient()
 
 def cited_ids(answer: str) -> list[str]:
     return re.findall(r"\[(c\d+)\]", answer or "")
+
+
+RATING_METHOD = ("Plain mean of five equally weighted aspects (docs/BENCHMARK.md). Accuracy and honesty need known answers, so they "
+                 "come only from the agent's standard benchmark of the day (SQuAD 2.0, HotpotQA, FEVER). Reliability, speed and grounding "
+                 "are measured on that benchmark and again in this run, and the two are averaged. In the run: reliability = calls "
+                 "answered in the right shape; speed = 95th-percentile response time against the role's budget; grounding = share of "
+                 "a reasoner's claims the verifier confirmed, a generator's citation precision x coverage, or the share of a "
+                 "retriever's sub-questions whose sources gave the reader usable facts. Without a benchmark, the run alone counts.")
+
+
+def rate(role: str, s: dict, benchmark: dict | None = None) -> dict:
+    """An agent's score for one run: its benchmark of the day (known-answer items) together with what this run measured.
+    Each aspect is the mean of the measurements of it; the score is the plain mean of the aspects (equal weights)."""
+    grounding = list(s["grounding"])
+    if s["claims"]:
+        grounding.append((s["claims"] - s["unsupported"]) / s["claims"])
+    run = bench.combine(role, {"grounding": grounding} if grounding else {}, s["ok"], s["ok"] + s["fail"], s["secs"])["aspects"]
+    tested = (benchmark or {}).get("aspects", {})
+    aspects = {}
+    for a in bench.ASPECTS:
+        measured = [m[a] for m in (tested, run) if a in m]
+        if measured:
+            aspects[a] = round(sum(measured) / len(measured), 1)
+    return {"aspects": aspects, "score": round(sum(aspects.values()) / len(aspects), 1),
+            "weights": {a: round(1 / len(aspects), 3) for a in aspects}, "run": run, "benchmark": tested or None}
 
 
 def split_citations(answer: str) -> str:
@@ -152,6 +177,7 @@ class Run:
         self.dead: set[str] = set()
         self.pending_failover = None
         self.benchmarked: list[tuple[dict, str, dict]] = []  # fresh benchmark results, published on-chain at the end
+        self.bench_of: dict[tuple, dict] = {}  # (asset, role) -> today's benchmark report (fresh or cached), part of the run rating
         self.killed = None  # the agent the kill demo took offline; always revived before the run ends
         self._save_lock = asyncio.Lock()
         self.t0 = time.monotonic()
@@ -169,7 +195,7 @@ class Run:
         if key not in self.stats:
             self.stats[key] = {"name": agent["name"], "role": role, "endpoint": agent["endpoint"], "ours": agent["ours"],
                                "registry": agent.get("registry", "8004"), "ok": 0, "fail": 0, "streak": 0, "claims": 0,
-                               "unsupported": 0, "outcome": "passed"}
+                               "unsupported": 0, "outcome": "passed", "secs": [], "grounding": []}
         return self.stats[key]
 
     # ---------- hire ----------
@@ -214,7 +240,7 @@ class Run:
         await self.save()
         started = time.monotonic()
         day = datetime.now(timezone.utc).date()
-        report = await store.todays_benchmark(agent["asset"], role, bench.VERSION, day)
+        report = await store.todays_benchmark(agent["asset"], role, bench.LABEL, day)
         cached = report is not None
         if cached and not report.get("tx") and self.feedback:
             self.benchmarked.append((agent, role, report))  # measured earlier without writing on-chain: publish it now
@@ -239,9 +265,10 @@ class Run:
                 metrics.SCREENED.labels(role, "busy", "trial").inc()
                 return None
             if not agent["asset"].startswith("unregistered"):
-                report["id"] = await store.save_benchmark(agent["asset"], agent["name"], role, bench.VERSION, day, report)
+                report["id"] = await store.save_benchmark(agent["asset"], agent["name"], role, bench.LABEL, day, report)
                 self.benchmarked.append((agent, role, report))
-        entry["bench"] = {"id": report.get("id"), "score": report["score"], "aspects": report["aspects"], "cached": cached, "version": bench.VERSION}
+        entry["bench"] = {"id": report.get("id"), "score": report["score"], "aspects": report["aspects"], "cached": cached, "version": bench.LABEL}
+        self.bench_of[(agent["asset"], role)] = report
         if report["score"] < CONFIG.BENCH_MIN_SCORE:
             weak = ", ".join(f"{a} {v:.0f}" for a, v in report["aspects"].items() if v < CONFIG.BENCH_MIN_SCORE)
             return reject("trial", f"benchmark {report['score']:.0f}/100, under {CONFIG.BENCH_MIN_SCORE} (weak: {weak})")
@@ -273,7 +300,7 @@ class Run:
                 raise RuntimeError(f"no working {role} left")
             s = self.touch(agent, role)
             started = time.monotonic()
-            call = {"role": role, "agent": agent["name"], "task_id": task_id, "at_ms": self.ms(started), "ms": None, "ok": False}
+            call = {"role": role, "agent": agent["name"], "asset": agent["asset"], "task_id": task_id, "at_ms": self.ms(started), "ms": None, "ok": False}
             self.r["calls"].append(call)
             try:
                 out = await post(agent["endpoint"], {"run_id": self.r["run_id"], "task_id": task_id, "role": role, "input": inp}, CONFIG.TASK_TIMEOUT)
@@ -304,6 +331,7 @@ class Run:
             done = time.monotonic()
             call.update(ms=int((done - started) * 1000), ok=True)
             s["ok"] += 1
+            s["secs"].append(done - started)
             s["streak"] = 0
             metrics.CALLS.labels(role, "ok").inc()
             if self.pending_failover and self.pending_failover["role"] == role:
@@ -366,6 +394,8 @@ class Run:
                 continue
             agent, out = await self.call("reader", {"sub_question": t["question"], "search": t["search"], "web": t.get("web"), "sources": t["sources"]}, f"{t['id']}-read")
             t.update(facts=out["facts"], read_by=agent["asset"], read_by_name=agent["name"])
+            # The retriever's grounding: did its sources hold anything usable for this sub-question?
+            self.stats[(t["retrieved_by"], "retriever")]["grounding"].append(float(bool(out["facts"])))
             await self.save()
 
     async def step_reason(self):
@@ -414,30 +444,62 @@ class Run:
                                                        "length": self.r["length"], "reasoning": self.r["reasoning"]}, f"g{attempt}")
             out["answer"] = split_citations(out["answer"])
             cited = cited_ids(out["answer"])
+            # Citation quality is the generator's grounding. A badly cited answer still came back, so it is not a failed call.
+            s = self.touch(agent, "generator")
+            s["grounding"].append(bench._citations(out["answer"], allowed))
             if cited and all(x in allowed for x in cited):
                 self.r.update(answer=out["answer"], written_by=agent["asset"], written_by_name=agent["name"])
                 return
-            s = self.touch(agent, "generator")
             s["outcome"] = "bad-citations"
-            s["fail"] += 1
         self.r["answer"] = "The generator did not cite verified claims correctly; no answer was accepted."
+
+    def work(self, asset: str, role: str) -> dict:
+        """What one agent did in this run, for its evidence file."""
+        r = self.r
+        if role == "planner":
+            return {"plan": r["plan"]} if any(t.get("planned_by") == asset for t in r["tasks"]) else {}
+        if role == "retriever":
+            return {"tasks": [{"sub_question": t["question"], "sources": t.get("sources", [])} for t in r["tasks"] if t.get("retrieved_by") == asset]}
+        if role == "reader":
+            return {"tasks": [{"sub_question": t["question"], "facts": t.get("facts", [])} for t in r["tasks"] if t.get("read_by") == asset]}
+        keys = ("id", "text", "quote", "source_url", "status", "reason")
+        if role == "reasoner":
+            return {"claims": [{k: c.get(k) for k in keys} | {"verified_by": c.get("verified_by")} for c in r["claims"] if c.get("produced_by") == asset]}
+        if role == "verifier":
+            return {"verdicts": [{k: c.get(k) for k in keys} | {"produced_by": c.get("produced_by")} for c in r["claims"] if c.get("verified_by") == asset]}
+        if role == "generator":
+            return {"answer": r.get("answer") if r.get("written_by") == asset else None}
+        return {}
 
     async def step_record(self):
         if self.killed:
             await store.redis.srem("agents:killed", self.killed)
+        # Every rating links to an evidence file about that one agent; its SHA-256 goes on-chain with the score, so anyone
+        # can fetch the file and check it is the one the rating was written with (GET /api/evidence/{hash}).
+        rater = (await wallets()).get("reviewer") if self.feedback else None
         items = []
         for (asset, role), s in self.stats.items():
-            total = s["ok"] + s["fail"]
-            score = s["ok"] / total if total else 0
-            if s["claims"]:
-                score *= (s["claims"] - s["unsupported"]) / s["claims"]
-            score = round(score * 100)
+            tested = self.bench_of.get((asset, role))
+            rated = rate(role, s, tested)
+            score = round(rated["score"])
             outcome = "unsupported-claims" if s["unsupported"] and s["outcome"] == "passed" else s["outcome"]
-            item = {"asset": asset, "name": s["name"], "role": role, "ours": s["ours"], "registry": s["registry"], "score": score, "outcome": outcome}
+            item = {"asset": asset, "name": s["name"], "role": role, "ours": s["ours"], "registry": s["registry"], "score": score,
+                    "aspects": rated["aspects"], "measured": {"benchmark": rated["benchmark"], "run": rated["run"]}, "outcome": outcome}
             if asset.startswith("unregistered"):
                 item["error"] = "not registered on-chain"
             elif s["registry"] == "sati" and not CONFIG.SATI_FEEDBACK:
                 item["error"] = "SATI feedback is off (set SATI_FEEDBACK=on)"
+            elif self.feedback:
+                item["evidence"] = await store.save_evidence({
+                    "schema": "sworn/feedback-v1", "kind": "run", "rater": rater,
+                    "agent": {"asset": asset, "name": s["name"], "role": role, "registry": s["registry"], "endpoint": s["endpoint"]},
+                    "run": {"id": self.r["run_id"], "question": self.r["question"], "started_at": self.r["started_at"], "report": self.report_url},
+                    "score": score, "aspects": rated["aspects"], "weights": rated["weights"], "outcome": outcome, "method": RATING_METHOD,
+                    "measured": {"benchmark": rated["benchmark"], "run": rated["run"]},
+                    "benchmark_report": f"{CONFIG.AGENTS_BASE_URL}/api/benchmarks/{tested['id']}" if tested and tested.get("id") else None,
+                    "calls": [{k: c.get(k) for k in ("task_id", "at_ms", "ms", "ok", "error")}
+                              for c in self.r["calls"] if c.get("asset") == asset and c["role"] == role],
+                    "work": self.work(asset, role)})
             items.append((item, s))
         self.r["feedback"] = [item for item, _ in items]
 
@@ -450,8 +512,10 @@ class Run:
         async def write(item, s):
             async with gate, per_asset.setdefault(item["asset"], asyncio.Lock()):
                 try:
+                    evidence = item.get("evidence")
                     item["tx"] = await give_feedback(item["asset"], score=item["score"], role=item["role"], outcome=item["outcome"],
-                                                     endpoint=s["endpoint"], report_url=s.get("report_url", self.report_url), registry=s["registry"])
+                                                     endpoint=s["endpoint"], registry=s["registry"], file_hash=evidence,
+                                                     report_url=f"{CONFIG.AGENTS_BASE_URL}/api/evidence/{evidence}" if evidence else self.report_url)
                     metrics.FEEDBACK.labels(s["registry"], "ok").inc()
                     self.log(f"feedback {s['name']}: {item['score']} ({item['outcome']})")
                 except Exception as err:  # noqa: BLE001
@@ -459,15 +523,22 @@ class Run:
                     metrics.FEEDBACK.labels(s["registry"], "fail").inc()
                     self.log(f"feedback {s['name']} failed: {err}")
 
-        # Fresh benchmark results are published too: tag1 = role, tag2 = benchmark version, linked to the full report.
+        # Fresh benchmark results are published too: tag1 = role, tag2 = benchmark version, with the full graded report as evidence.
         for agent, role, report in self.benchmarked:
             item = {"asset": agent["asset"], "name": agent["name"], "role": role, "ours": agent["ours"], "registry": agent.get("registry", "8004"),
-                    "score": round(report["score"]), "outcome": bench.VERSION, "benchmark_id": report["id"]}
+                    "score": round(report["score"]), "aspects": report["aspects"], "outcome": bench.LABEL, "benchmark_id": report["id"]}
             if item["registry"] == "sati" and not CONFIG.SATI_FEEDBACK:
                 item["error"] = "SATI feedback is off (set SATI_FEEDBACK=on)"
+            elif self.feedback:
+                item["evidence"] = await store.save_evidence({
+                    "schema": "sworn/feedback-v1", "kind": "benchmark", "rater": rater,
+                    "agent": {"asset": agent["asset"], "name": agent["name"], "role": role, "registry": item["registry"], "endpoint": agent["endpoint"]},
+                    "score": item["score"], "aspects": report["aspects"], "weights": report.get("weights"),
+                    "method": f"{bench.LABEL} standard benchmark ({bench.PER_KIND} items per kind of check), graded by code (docs/BENCHMARK.md)",
+                    "benchmark": {k: v for k, v in report.items() if k not in ("id", "tx")},
+                    "report": f"{CONFIG.AGENTS_BASE_URL}/api/benchmarks/{report['id']}"})
             self.r["feedback"].append(item)
-            items.append((item, {"name": agent["name"], "endpoint": agent["endpoint"], "registry": item["registry"],
-                                 "report_url": f"{CONFIG.AGENTS_BASE_URL}/api/benchmarks/{report['id']}"}))
+            items.append((item, {"name": agent["name"], "endpoint": agent["endpoint"], "registry": item["registry"]}))
 
         if self.feedback:
             await asyncio.gather(*(write(item, s) for item, s in items if "error" not in item))
