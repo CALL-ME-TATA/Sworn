@@ -78,6 +78,11 @@ async def research(question: str, *, length: str = "medium", reasoning: str = "s
 
 
 def summarize_answer(report: dict) -> dict:
+    metrics = report.get("metrics") or {}
+    claims = report.get("claims") or []
+    supported = metrics.get("claims_supported")
+    if supported is None:
+        supported = sum(1 for c in claims if c.get("status") == "supported")
     return {
         "run_id": report.get("run_id"),
         "question": report.get("question"),
@@ -86,13 +91,55 @@ def summarize_answer(report: dict) -> dict:
         "length": report.get("length"),
         "reasoning": report.get("reasoning"),
         "source": report.get("source"),
-        "metrics": report.get("metrics") or {},
+        "metrics": metrics,
         "round_trip_ms": report.get("round_trip_ms"),
-        "claims": len(report.get("claims") or []),
+        "claims": len(claims),
+        "claims_supported": supported,
         "failovers": len(report.get("failovers") or []),
-        "ui": f"http://localhost:3000/app#answer",
+        "ui": "http://localhost:3000/app#answer",
         "report_url": f"{API}/api/runs/{report.get('run_id')}",
     }
+
+
+def format_research_text(summary: dict) -> str:
+    """Human-readable research result for the agent to show the user (not JSON).
+
+    Full machine-readable report stays on debug_get_run — only when the user asks.
+    """
+    run_id = summary.get("run_id") or "?"
+    if summary.get("error") and not summary.get("answer"):
+        return (
+            f"Sworn research failed for run `{run_id}`.\n\n"
+            f"{summary['error']}\n\n"
+            f"Full JSON report (only if requested): debug_get_run(run_id=\"{run_id}\")"
+        )
+
+    answer = (summary.get("answer") or "").strip() or "(no answer)"
+    claims = summary.get("claims") or 0
+    supported = summary.get("claims_supported")
+    if supported is None:
+        claim_line = f"{claims} claims"
+    else:
+        claim_line = f"{supported}/{claims} claims supported"
+
+    bits = [claim_line]
+    if summary.get("length"):
+        bits.append(f"length={summary['length']}")
+    if summary.get("reasoning"):
+        bits.append(f"reasoning={summary['reasoning']}")
+    if summary.get("round_trip_ms") is not None:
+        bits.append(f"{summary['round_trip_ms']} ms")
+    if summary.get("failovers"):
+        bits.append(f"{summary['failovers']} failover(s)")
+
+    return (
+        f"{answer}\n\n"
+        f"---\n"
+        f"Run ID: `{run_id}` · {' · '.join(bits)}\n"
+        f"Debugger: {summary.get('ui') or 'http://localhost:3000/app'}\n"
+        f"Present this answer to the user as prose. Do not dump JSON.\n"
+        f"JSON/full report only if the user asks: debug_get_run(run_id=\"{run_id}\")"
+    )
 
 
 def evidence_view(report: dict) -> dict:
@@ -150,6 +197,10 @@ async def compare() -> Any:
 
 async def health() -> Any:
     return await _request("GET", "/api/health")
+
+
+async def run_status() -> Any:
+    return await _request("GET", "/api/status")
 
 
 async def admin(action: str, name: str) -> Any:

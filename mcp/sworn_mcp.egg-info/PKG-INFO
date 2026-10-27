@@ -11,6 +11,15 @@ Requires-Dist: httpx>=0.28
 
 Local stdio MCP server that talks to a running Sworn backend (`SWORN_API_URL`, default `http://localhost:3001`).
 
+## Flow
+
+1. **`init`** — health check + full description + command catalog (call first)
+2. **`research_brief` / `research_standard` / `research_deep`** (or `run_research`) — prenamed research
+3. **`get_evidence` / `get_hiring`** — inspect the run
+4. **`debug_*`** — engineering dumps
+
+Other tools return `not_initialized` (with the same catalog) until `init` succeeds.
+
 ## Install
 
 ```bash
@@ -25,7 +34,9 @@ sworn-mcp
 # or: python -m sworn_mcp
 ```
 
-## Cursor (`mcp.json`)
+Hosts (Cursor / Claude Desktop) launch this via MCP config — do not expect terminal output; stdio waits for the client.
+
+## Cursor (`.cursor/mcp.json`)
 
 ```json
 {
@@ -38,4 +49,6 @@ sworn-mcp
 }
 ```
 
-See the repo root README for Claude Desktop / VS Code snippets and skill packs under `skills/`.
+In Agent chat: ask to “init sworn, then research_brief: …”
+
+See the repo root README for Claude Desktop snippets and skill packs under `skills/`.

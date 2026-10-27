@@ -79,7 +79,7 @@ cd mcp && pip install -e .
 sworn-mcp   # stdio; set SWORN_API_URL if the API is not localhost:3001
 ```
 
-**Tools:** `run_research` (optional `length` / `reasoning`), presets `research_brief` / `research_standard` / `research_deep`, plus `get_evidence`, `get_hiring`, and `debug_*` inspectors. Research tools block until the answer is ready and return `run_id` + cited answer.
+**Flow:** call `sworn_init` first (returns what Sworn does, full command catalog, defaults, and call examples — surface the `guide` field; stop if the user only asked to init). On a later turn, prenamed `research_brief` / `research_standard` (default) / `research_deep` (or `run_research` with `length` / `reasoning`) reuses the same MCP session. Then `get_evidence` / `get_hiring` / `debug_*`. Other tools return `not_initialized` until `sworn_init` succeeds. Do not shell-wrap init + research.
 
 **Cursor** (`.cursor/mcp.json` or user MCP settings):
 
