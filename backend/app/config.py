@@ -26,6 +26,7 @@ class CONFIG:
     THIRD_PARTY_RETRIEVERS = 5  # real 8004 registry agents from other people, one per reachable address
     SATI_RETRIEVERS = 3         # and the same from the SATI registry
     FEEDBACK_CONCURRENCY = int(os.getenv("FEEDBACK_CONCURRENCY", "1"))  # on-chain score writes in flight at once
+    MAX_FEEDBACK_WRITES = 40    # on-chain transactions one run may send (a normal run sends 10-25); caps SOL spent per run
     SATI_FEEDBACK = os.getenv("SATI_FEEDBACK") == "on"  # write scores to SATI too (through SATI's public API)
     INDEXER = "https://8004-indexer-dev.qnt.sh/v2/graphql"
     TRUST_REFRESH = 600         # seconds between reads of new registry ratings (app/trust.py)

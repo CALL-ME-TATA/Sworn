@@ -8,3 +8,4 @@ CALLS = Counter("sworn_agent_calls_total", "Calls to hired agents", ["role", "re
 FAILOVERS = Counter("sworn_failovers_total", "Backups that took over a task", ["role"])
 CLAIMS = Counter("sworn_claims_total", "Claims checked by a verifier", ["verdict"])
 FEEDBACK = Counter("sworn_feedback_total", "Scores written back", ["registry", "result"])
+GUARDRAIL = Counter("sworn_guardrail_blocks_total", "Requests, answers, addresses and page sentences stopped by a guardrail", ["where", "reason"])

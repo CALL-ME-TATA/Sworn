@@ -195,4 +195,5 @@ export const postJson = (url: string, body: unknown) =>
   fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
 
 export const askClarify = (question: string, notFound: boolean) =>
-  postJson("/api/clarify", { question, notFound }).then((x) => x.json() as Promise<Clarify>).catch((): Clarify => ({ clear: true }));
+  // Any error (a refused question included) counts as clear: starting the run then shows the refusal itself.
+  postJson("/api/clarify", { question, notFound }).then((x) => (x.ok ? x.json() as Promise<Clarify> : { clear: true as const })).catch((): Clarify => ({ clear: true }));

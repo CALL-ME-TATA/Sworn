@@ -10,6 +10,7 @@ import httpx
 
 from . import store
 from .config import CONFIG, DATA
+from .guardrails import request_hook
 
 # Wikimedia asks API clients to name a contact (email or URL) in the User-Agent.
 UA = {"User-Agent": f"sworn-agent-hiring/0.2 (VVCE Hack Day demo; {CONFIG.WIKI_CONTACT})"}
@@ -22,7 +23,9 @@ _client: httpx.AsyncClient | None = None
 def client() -> httpx.AsyncClient:
     global _client
     if _client is None:
-        _client = httpx.AsyncClient(headers=UA, timeout=8.0, follow_redirects=True)
+        # Source URLs can come from strangers' agents: every request, each redirect included, must go to a public
+        # address (app/guardrails.py), so a source can never reach our database, cache or internal services.
+        _client = httpx.AsyncClient(headers=UA, timeout=8.0, follow_redirects=True, event_hooks={"request": [request_hook]})
     return _client
 
 

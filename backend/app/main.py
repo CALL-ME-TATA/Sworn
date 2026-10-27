@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
-from . import store, trust
+from . import guardrails, store, trust
 from .agents import HANDLERS
 from .llm import ProviderLimit
 from .config import AGENT_LIST, CONFIG, DATA, LENGTHS, REASONING
@@ -127,6 +127,10 @@ async def start_run(request: Request):
     source = body.get("source") or "web"
     if source not in ("web", "mcp", "cli"):
         raise HTTPException(400, "source must be one of web, mcp, cli")
+    try:  # the content policy (app/guardrails.py), for the web page and the MCP server alike
+        await guardrails.check_question(question)
+    except guardrails.Refused as err:
+        raise HTTPException(422, str(err)) from None
     if not await store.redis.set("run:lock", "1", nx=True, ex=600):
         raise HTTPException(409, "a run is already in progress")
 
@@ -153,6 +157,10 @@ async def api_clarify(request: Request):
     question = str(body.get("question") or "").strip()[:300]
     if not question:
         raise HTTPException(400, "question is required")
+    try:
+        await guardrails.check_question(question)
+    except guardrails.Refused as err:
+        raise HTTPException(422, str(err)) from None
     try:
         return await clarify(question, bool(body.get("notFound")))
     except Exception as err:  # noqa: BLE001

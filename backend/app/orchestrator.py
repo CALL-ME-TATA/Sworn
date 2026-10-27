@@ -15,7 +15,7 @@ from typing import TypedDict
 import httpx
 from langgraph.graph import END, START, StateGraph
 
-from . import bench, llm, metrics, store, trust
+from . import bench, guardrails, llm, metrics, store, trust
 from .config import CONFIG, REASONING, ROLES
 from .llm import ask
 from .registry import discover, get_score, give_feedback, is_alive, operator_wallets, registry_stats, wallets
@@ -92,6 +92,10 @@ SHAPES = {
 
 
 async def post(endpoint: str, body: dict, timeout: float) -> dict:
+    try:  # agent addresses come from a public registry: never call into a private network (app/guardrails.py)
+        await guardrails.check_url(endpoint, allow_own=True)
+    except guardrails.UnsafeURL as err:
+        raise AgentError(f"blocked: {err}", True) from None
     try:
         res = await _http.post(endpoint, json=body, timeout=timeout)
     except httpx.TimeoutException:
@@ -110,6 +114,9 @@ async def post(endpoint: str, body: dict, timeout: float) -> dict:
         raise AgentError("HTTP 410 gone (agent moved or shut down)" if res.status_code == 410 else f"HTTP {res.status_code}", True)
     if res.status_code >= 400:
         raise AgentError(f"HTTP {res.status_code}", False)
+    if not guardrails.reply_size_ok(res.content):
+        metrics.GUARDRAIL.labels("reply", "too_large").inc()
+        raise AgentError(f"reply too large (over {guardrails.MAX_REPLY_BYTES // 1000} KB)", False)
     try:
         out = res.json().get("output")
     except Exception:  # noqa: BLE001
@@ -223,6 +230,10 @@ class Run:
 
         entry["stage"] = "alive"
         await self.save()
+        try:  # before even pinging it: a registered address must be public (our own agents excepted)
+            await guardrails.check_url(agent["endpoint"], allow_own=True)
+        except guardrails.UnsafeURL as err:
+            return reject("alive", f"unsafe address: {err}")
         if not await is_alive(agent):
             return reject("alive", "endpoint not responding", "dead")
 
@@ -393,7 +404,12 @@ class Run:
             if "facts" in t:
                 continue
             agent, out = await self.call("reader", {"sub_question": t["question"], "search": t["search"], "web": t.get("web"), "sources": t["sources"]}, f"{t['id']}-read")
-            t.update(facts=out["facts"], read_by=agent["asset"], read_by_name=agent["name"])
+            # Page sentences that try to instruct the model never reach a prompt (app/guardrails.py).
+            facts = [f for f in out["facts"] if not guardrails.injected(f.get("quote", ""))]
+            if len(facts) < len(out["facts"]):
+                metrics.GUARDRAIL.labels("page", "injection").inc(len(out["facts"]) - len(facts))
+                t["injected_dropped"] = len(out["facts"]) - len(facts)
+            t.update(facts=facts, read_by=agent["asset"], read_by_name=agent["name"])
             # The retriever's grounding: did its sources hold anything usable for this sub-question?
             self.stats[(t["retrieved_by"], "retriever")]["grounding"].append(float(bool(out["facts"])))
             await self.save()
@@ -449,6 +465,8 @@ class Run:
             s["grounding"].append(bench._citations(out["answer"], allowed))
             if cited and all(x in allowed for x in cited):
                 self.r.update(answer=out["answer"], written_by=agent["asset"], written_by_name=agent["name"])
+                if await guardrails.check_answer(out["answer"]):  # the content policy, on the finished answer too
+                    self.r.update(answer="The answer was withheld: it falls outside what Sworn will publish.", withheld=True)
                 return
             s["outcome"] = "bad-citations"
         self.r["answer"] = "The generator did not cite verified claims correctly; no answer was accepted."
@@ -540,6 +558,9 @@ class Run:
             self.r["feedback"].append(item)
             items.append((item, {"name": agent["name"], "endpoint": agent["endpoint"], "registry": item["registry"]}))
 
+        # A cap on the transactions (and SOL) one run may spend; anything past it is listed, not sent.
+        for item, _ in [x for x in items if "error" not in x[0]][CONFIG.MAX_FEEDBACK_WRITES:]:
+            item["error"] = f"over this run's cap of {CONFIG.MAX_FEEDBACK_WRITES} on-chain writes"
         if self.feedback:
             await asyncio.gather(*(write(item, s) for item, s in items if "error" not in item))
             for item, _ in items:
