@@ -8,3 +8,5 @@ wallet.json
 data/wiki-cache.json
 *.zip
 .impeccable/
+*.egg-info/
+run_*_debug.json
