@@ -2,6 +2,7 @@
 for the failover demo, the run API the frontend uses, health and Prometheus metrics."""
 import asyncio
 import json
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -123,19 +124,25 @@ async def start_run(request: Request):
     length, reasoning = body.get("length") or "medium", body.get("reasoning") or "standard"
     if length not in LENGTHS or reasoning not in REASONING:
         raise HTTPException(400, f"length must be one of {list(LENGTHS)} and reasoning one of {list(REASONING)}")
+    source = body.get("source") or "web"
+    if source not in ("web", "mcp", "cli"):
+        raise HTTPException(400, "source must be one of web, mcp, cli")
     if not await store.redis.set("run:lock", "1", nx=True, ex=600):
         raise HTTPException(409, "a run is already in progress")
 
+    run_id = f"run_{int(time.time() * 1000)}"
+
     async def go():
         try:
-            await run(question, kill=bool(body.get("kill")), length=length, reasoning=reasoning)
+            await run(question, kill=bool(body.get("kill")), length=length, reasoning=reasoning,
+                      run_id=run_id, source=source)
         except Exception as err:  # noqa: BLE001
             print(f"run failed: {err}")
         finally:
             await store.redis.delete("run:lock")
 
     running = asyncio.create_task(go())
-    return {"started": True}
+    return {"started": True, "run_id": run_id}
 
 
 @app.post("/api/clarify")

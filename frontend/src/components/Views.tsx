@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   askClarify, citedIds, deadSet, explorer, getJson, percent, progress, ROLES, roundTrip, ROUNDS, seconds, secs, sourceName, STEPS,
-  type Clarify, type Compare, type Hiring, type Run, type RunSummary,
+  type Clarify, type Compare, type Hiring, type Run, type RunSummary, type ValidationRow,
 } from "@/lib/run";
 import { Asset, Empty, Origin, Rating, Title, verdictTag } from "./bits";
 import { Icon } from "./ui";
@@ -190,6 +190,169 @@ export function FollowUp({ r, onRun }: { r: Run; onRun: (q: string) => void }) {
   );
 }
 
+/* ---------- plan / sources / validations / inspector ---------- */
+
+export function PlanView({ r }: { r: Run }) {
+  if (!r.tasks.length) {
+    return <><Title>Plan</Title><Empty>Sub-questions appear here once the planner splits the research question.</Empty></>;
+  }
+  return (
+    <>
+      <Title note="The planner splits the question into sub-questions, each with a Wikipedia query and (when web search is on) a web query.">Plan</Title>
+      <ol className="m-0 list-none space-y-3 p-0">
+        {r.tasks.map((t, i) => (
+          <li key={t.id} className="card px-6 py-5">
+            <p className="eyebrow mb-1">Sub-question {i + 1}{t.planned_by_name ? ` · planned by ${t.planned_by_name}` : ""}</p>
+            <p className="m-0 text-lg font-medium text-ink">{t.question}</p>
+            <dl className="mt-3 mb-0 grid gap-2 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-faint">Wikipedia query</dt>
+                <dd className="m-0 font-mono text-muted">{t.search || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-faint">Web query</dt>
+                <dd className="m-0 font-mono text-muted">{t.web || "—"}</dd>
+              </div>
+            </dl>
+          </li>
+        ))}
+      </ol>
+    </>
+  );
+}
+
+export function SourcesView({ r }: { r: Run }) {
+  if (!r.tasks.length) {
+    return <><Title>Sources</Title><Empty>Retrieved pages appear here once the retriever has run.</Empty></>;
+  }
+  const any = r.tasks.some((t) => t.sources?.length);
+  if (!any && r.tasks.every((t) => !t.sources)) {
+    return <><Title>Sources</Title><Empty>Sources appear here as each sub-question is retrieved.</Empty></>;
+  }
+  return (
+    <>
+      <Title note="Pages fetched per sub-question. Open Evidence to see which sentences became claims.">Sources</Title>
+      <div className="space-y-4">
+        {r.tasks.map((t, i) => {
+          const facts = Array.isArray(t.facts) ? t.facts.length : 0;
+          return (
+            <section key={t.id} className="card overflow-hidden">
+              <header className="border-b border-line bg-bone/50 px-6 py-4">
+                <p className="eyebrow mb-1">
+                  Sub-question {i + 1}
+                  {t.retrieved_by_name ? ` · retrieved by ${t.retrieved_by_name}` : ""}
+                  {facts ? ` · ${facts} fact${facts === 1 ? "" : "s"} extracted` : ""}
+                </p>
+                <p className="m-0 font-medium text-ink">{t.question}</p>
+              </header>
+              {t.sources?.length ? (
+                <ul className="m-0 list-none divide-y divide-line p-0">
+                  {t.sources.map((s) => (
+                    <li key={s.url} className="flex flex-wrap items-baseline justify-between gap-2 px-6 py-3">
+                      <a href={s.url} target="_blank" rel="noopener" className="font-medium text-ink no-underline hover:underline">{s.title || sourceName(s.url)}</a>
+                      <span className="font-mono text-xs text-muted">{sourceName(s.url)}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="m-0 px-6 py-5 text-sm text-muted">{t.retrieved_by_name ? "No sources returned." : "Waiting for retrieval…"}</p>
+              )}
+              {r.claims.some((c) => c.sub_question === t.question) && (
+                <footer className="border-t border-line px-6 py-3 text-sm">
+                  <a href={`#evidence`} className="text-muted no-underline hover:text-ink">View claims for this sub-question in Evidence →</a>
+                </footer>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+export function ValidationsView({ runId }: { runId: string }) {
+  const [rows, setRows] = useState<ValidationRow[] | null>(null);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let alive = true;
+    setRows(null);
+    setErr("");
+    getJson<ValidationRow[]>(`/api/runs/${runId}/validations`).then((data) => {
+      if (!alive) return;
+      if (!data) setErr("Could not load validation records.");
+      else setRows(data);
+    });
+    return () => { alive = false; };
+  }, [runId]);
+  return (
+    <>
+      <Title note="Verifier verdicts stored in Postgres for this run (the on-chain validation registry is archived; feedback txs still link the run report).">
+        Validations
+      </Title>
+      {err && <p className="text-sm text-red">{err}</p>}
+      {rows == null && !err && <Empty>Loading validation records…</Empty>}
+      {rows && !rows.length && <Empty>No validation rows yet. They are written when the run records claim verdicts.</Empty>}
+      {rows && rows.length > 0 && (
+        <div className="card overflow-x-auto px-6 py-2">
+          <table className="tbl min-w-[640px]">
+            <thead>
+              <tr>
+                <th>Claim</th>
+                <th>Verdict</th>
+                <th>Producer</th>
+                <th>Verifier</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((v) => (
+                <tr key={String(v.claim_id)}>
+                  <td>
+                    <span className="font-mono text-xs text-muted">{String(v.claim_id)}</span>
+                    <p className="m-0 max-w-md text-sm text-ink">{String(v.claim ?? "")}</p>
+                  </td>
+                  <td><span className={`tag ${verdictTag(String(v.verdict ?? ""))}`}>{String(v.verdict ?? "—")}</span></td>
+                  <td className="text-sm text-muted">{String(v.producer_name ?? v.producer ?? "—")}</td>
+                  <td className="text-sm text-muted">{String(v.verifier_name ?? v.verifier ?? "—")}</td>
+                  <td>
+                    {v.source_url
+                      ? <a href={String(v.source_url)} target="_blank" rel="noopener" className="font-mono text-xs">{sourceName(String(v.source_url))}</a>
+                      : "—"}
+                    {v.reason ? <p className="m-0 text-xs text-faint">{String(v.reason)}</p> : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+export function InspectorView({ r }: { r: Run }) {
+  const [copied, setCopied] = useState(false);
+  const json = JSON.stringify(r, null, 2);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  }
+  return (
+    <>
+      <Title note="Full run report as stored by the orchestrator. Useful when debugging MCP or API clients.">Inspector</Title>
+      <div className="mb-3 flex items-center gap-3">
+        <button type="button" onClick={copy} className="btn btn-ghost text-sm">{copied ? "Copied" : "Copy JSON"}</button>
+        <a href={`/api/runs/${r.run_id}`} target="_blank" rel="noopener" className="text-sm text-muted no-underline hover:text-ink">Open raw API</a>
+        <span className="font-mono text-xs text-faint">{r.run_id}</span>
+      </div>
+      <pre className="card max-h-[70vh] overflow-auto p-4 font-mono text-[11px] leading-relaxed text-muted whitespace-pre-wrap">{json}</pre>
+    </>
+  );
+}
+
 /* ---------- evidence ---------- */
 
 export function Evidence({ r, target }: { r: Run; target?: string }) {
@@ -369,7 +532,8 @@ export function Record({ r }: { r: Run }) {
         </table>
       </div>
       <p className="mt-4 mb-0 max-w-2xl text-sm text-muted">
-        Validation records (each claim, who stated it, who checked it, the verdict) are stored in Postgres at{" "}
+        Validation records (each claim, who stated it, who checked it, the verdict) are also listed on the{" "}
+        <a href="#validations" className="underline underline-offset-4">Validations</a> tab, and as raw JSON at{" "}
         <a href={`/api/runs/${r.run_id}/validations`} target="_blank" rel="noopener" className="inline-code no-underline">/api/runs/{r.run_id}/validations</a>.
         Every on-chain entry links back to this run&apos;s report.
       </p>

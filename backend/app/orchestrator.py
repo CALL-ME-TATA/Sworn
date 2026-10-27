@@ -132,10 +132,14 @@ class State(TypedDict, total=False):
 
 
 class Run:
-    def __init__(self, question: str, *, feedback=True, kill=False, log=print, latest=True, length="medium", reasoning="standard"):
-        run_id = f"run_{int(time.time() * 1000)}"
+    def __init__(self, question: str, *, feedback=True, kill=False, log=print, latest=True, length="medium",
+                 reasoning="standard", run_id: str | None = None, source: str = "web"):
+        run_id = run_id or f"run_{int(time.time() * 1000)}"
+        if source not in ("web", "mcp", "cli"):
+            source = "web"
         self.r = {
             "run_id": run_id, "question": question, "started_at": now(), "length": length, "reasoning": reasoning,
+            "source": source,
             "mode": f"{CONFIG.PROVIDER} · {CONFIG.MODEL}" if CONFIG.LLM else "rule-based",
             "registry": None, "plan": [], "tasks": [], "hiring": [], "team": {}, "claims": [], "answer": None,
             "failovers": [], "dead": [], "feedback": [], "metrics": {},
@@ -565,7 +569,7 @@ async def _main():
     await store.connect()
     await seed_cache()
     try:
-        r = await run(question, feedback="--no-feedback" not in args, kill="--kill" in args)
+        r = await run(question, feedback="--no-feedback" not in args, kill="--kill" in args, source="cli")
         print(f"\n{r['answer']}\n")
         for k, v in r["metrics"].items():
             print(f"  {k}: {v}")

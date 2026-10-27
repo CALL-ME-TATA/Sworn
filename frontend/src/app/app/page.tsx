@@ -6,7 +6,7 @@ import { Wordmark, Icon } from "@/components/ui";
 import { Benchmarks } from "@/components/Benchmarks";
 import { Trust } from "@/components/Trust";
 import { FailoverRecord, Timing } from "@/components/Timing";
-import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, Percent, Record, Registries, Scoreline, Steps } from "@/components/Views";
+import { Answer, Baseline, ClarifyOptions, Evidence, FollowUp, HiringView, History, InspectorView, Percent, PlanView, Record, Registries, Scoreline, SourcesView, Steps, ValidationsView } from "@/components/Views";
 import { askClarify, getJson, LENGTHS, postJson, REASONINGS, seconds, type Clarify, type Compare, type Length, type Reasoning, type Run } from "@/lib/run";
 
 /** A small segmented radio group: one choice of a few, each with a short hint underneath its label. */
@@ -55,7 +55,7 @@ export default function App() {
   const [run, setRun] = useState<Run | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [running, setRunning] = useState(false);
-  const [waitingFor, setWaitingFor] = useState<string | null>(null); // run_id that was latest when we started a new run
+  const [waitingFor, setWaitingFor] = useState<string | null>(null); // run_id we just started; hide until that report appears
   const [viewing, setViewing] = useState<string | null>(null);       // a past run picked from History
   const [compare, setCompare] = useState<Compare | null>(null);
   const [question, setQuestion] = useState("");
@@ -74,7 +74,7 @@ export default function App() {
     ]);
     setRunning(Boolean(status?.running));
     setLoaded(true);
-    if (r && waitingFor && r.run_id !== waitingFor) setWaitingFor(null);
+    if (r && waitingFor && r.run_id === waitingFor) setWaitingFor(null);
     if (r) setRun(r);
     // No report (backend restarting, or no runs yet) also keeps polling, so the page recovers on its own.
     return { busy: Boolean(status?.running) || Boolean(waitingFor) || !r || !r.finished_at };
@@ -97,13 +97,14 @@ export default function App() {
     setClarify(null);
     setQuestion(q);
     setViewing(null);
-    const res = await postJson("/api/run", { question: q, kill, length, reasoning });
+    const res = await postJson("/api/run", { question: q, kill, length, reasoning, source: "web" });
     if (!res.ok) {
       setNotice((await res.json().catch(() => ({})))?.detail ?? `Could not start the run (HTTP ${res.status}). Is the backend running?`);
       return;
     }
+    const body = await res.json().catch(() => ({}));
     setNotice("");
-    setWaitingFor(run?.run_id ?? "none");
+    setWaitingFor(body.run_id ?? run?.run_id ?? "none");
     history.replaceState(null, "", location.pathname); // a new run starts on its default tab
     window.dispatchEvent(new HashChangeEvent("hashchange"));
   }
@@ -124,11 +125,14 @@ export default function App() {
   const done = Boolean(r?.finished_at);
   const tabs = r ? [
     { id: "answer", label: "Answer" },
+    { id: "plan", label: "Plan", count: r.tasks.length || null },
+    { id: "sources", label: "Sources", count: r.tasks.reduce((n, t) => n + (t.sources?.length ?? 0), 0) || null },
     { id: "evidence", label: "Evidence", count: r.claims.length || null },
     { id: "hiring", label: "Hiring", count: r.hiring.length || null },
     { id: "trust", label: "Registry trust" },
     { id: "record", label: "On-chain", count: r.feedback.filter((f) => f.tx).length || null },
     { id: "timing", label: "Timing", count: r.calls?.length || null },
+    { id: "inspector", label: "Inspector" },
     { id: "benchmarks", label: "Benchmarks" },
     { id: "registries", label: "Registries" },
     { id: "baseline", label: "Compare" },
@@ -210,6 +214,14 @@ export default function App() {
               {done
                 ? <span className={`tag ${r.error ? "tag-red" : "tag-green"}`}>{r.error ? "stopped" : "finished"}</span>
                 : <span className="tag tag-yellow"><span className="pulse size-1.5 rounded-full bg-yellow" />running</span>}
+              {r.source && (
+                <span
+                  className={`tag ${r.source === "mcp" ? "tag-blue" : "tag-gray"}`}
+                  title={r.source === "mcp" ? "Started via the Sworn MCP server" : r.source === "cli" ? "Started from the CLI" : "Started from this web app"}
+                >
+                  {r.source}
+                </span>
+              )}
               <span>{done ? `took ${seconds(r.started_at, r.finished_at!)} s · ${new Date(r.finished_at!).toLocaleString()}` : `started ${new Date(r.started_at).toLocaleTimeString()}`}</span>
               <span className="font-mono">{r.mode}</span>
               {r.length && <span>{LENGTHS.find((l) => l.id === r.length)?.label} answer · {REASONINGS.find((l) => l.id === r.reasoning)?.label.toLowerCase()} reasoning</span>}
@@ -238,10 +250,14 @@ export default function App() {
                   {done && !r.error && <><Scoreline r={r} /><FollowUp key={r.run_id} r={r} onRun={startRun} /></>}
                 </>
               )}
+              {tab === "plan" && <PlanView r={r} />}
+              {tab === "sources" && <SourcesView r={r} />}
               {tab === "evidence" && <Evidence r={r} target={claimTarget} />}
               {tab === "hiring" && <HiringView r={r} />}
+              {tab === "validations" && <ValidationsView runId={r.run_id} />}
               {tab === "record" && <Record r={r} />}
               {tab === "timing" && <Timing r={r} />}
+              {tab === "inspector" && <InspectorView r={r} />}
               {tab === "benchmarks" && <Benchmarks />}
               {tab === "trust" && <Trust />}
               {tab === "registries" && <Registries r={r} />}

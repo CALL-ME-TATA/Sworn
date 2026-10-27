@@ -52,6 +52,7 @@ Ambiguous questions get a "which one?" prompt before the run. Dead ends get foll
 | Infra / DevOps | Docker Compose, GitHub Actions (`.github/workflows/ci.yml`) |
 | AI | OpenAI-compatible API: Groq `openai/gpt-oss-120b` by default, OpenAI or Gemini by `LLM_PROVIDER`, or `LLM=off` for rules |
 | Monitoring | Prometheus metrics at `/metrics`, health at `/api/health`, Prometheus on :9090 |
+| MCP | Stdio server in `mcp/` (`sworn-mcp`) for Cursor, Claude Desktop, VS Code, and other MCP hosts |
 
 On "validation records": the 8004 SDK's validation registry is archived (its calls throw). Verifier verdicts
 are stored as validation records in Postgres (`/api/runs/{id}/validations`). On-chain, each agent's feedback
@@ -67,6 +68,48 @@ docker compose exec backend python -m app.register      # put our 9 agents on de
 ```
 
 Open http://localhost:3000 and ask a question. Tick "Kill main retriever" to watch failover.
+The `/app` debugger shows Plan, Sources, Evidence, Hiring, Validations, Timing, and a JSON Inspector; runs started via MCP are tagged `mcp`.
+
+### MCP (IDE / AI hosts)
+
+With the stack running on `:3001`:
+
+```bash
+cd mcp && pip install -e .
+sworn-mcp   # stdio; set SWORN_API_URL if the API is not localhost:3001
+```
+
+**Tools:** `run_research` (optional `length` / `reasoning`), presets `research_brief` / `research_standard` / `research_deep`, plus `get_evidence`, `get_hiring`, and `debug_*` inspectors. Research tools block until the answer is ready and return `run_id` + cited answer.
+
+**Cursor** (`.cursor/mcp.json` or user MCP settings):
+
+```json
+{
+  "mcpServers": {
+    "sworn": {
+      "command": "sworn-mcp",
+      "env": { "SWORN_API_URL": "http://localhost:3001" }
+    }
+  }
+}
+```
+
+**Claude Desktop** (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "sworn": {
+      "command": "sworn-mcp",
+      "env": { "SWORN_API_URL": "http://localhost:3001" }
+    }
+  }
+}
+```
+
+**VS Code** (MCP support / Copilot): same stdio command and `SWORN_API_URL` env.
+
+Host skill packs (optional guidance for agents that load skills): [`skills/sworn-research/SKILL.md`](skills/sworn-research/SKILL.md), [`skills/sworn-debug/SKILL.md`](skills/sworn-debug/SKILL.md).
 
 From the command line:
 
@@ -108,6 +151,8 @@ search for the whole question does not surface both gold articles. That is a rea
 | `backend/app/store.py` | Postgres and Redis |
 | `backend/app/sources.py`, `rules.py`, `llm.py` | Wikipedia + quote matching, rule-based mode, LLM client |
 | `registry/server.js` | Solana bridge: isItAlive, getSummary, giveFeedback, registerAgent |
-| `frontend/src/` | Results page: answer, evidence, hiring bracket, on-chain record, registries, baseline, history |
+| `frontend/src/` | Results page: answer, plan, sources, evidence, hiring, validations, inspector, on-chain, registries, baseline, history |
+| `mcp/` | Sworn MCP server (stdio) for IDEs and AI hosts |
+| `skills/` | Optional host skill packs for research and debug tool use |
 
 The Chrome extension on the poster is optional and not built. Deployment (Vercel, VPS) is not set up; everything runs locally.

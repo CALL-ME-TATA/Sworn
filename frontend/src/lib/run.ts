@@ -65,6 +65,7 @@ export type RegistryStats = {
 };
 export type Length = "short" | "medium" | "long";
 export type Reasoning = "light" | "standard" | "high";
+export type RunSource = "web" | "mcp" | "cli";
 /** What the user picks before a run. Word ranges and research depth match backend/app/config.py (LENGTHS, REASONING). */
 export const LENGTHS: { id: Length; label: string; hint: string; about: string }[] = [
   { id: "short", label: "Short", hint: "~80 words", about: "A direct answer and one paragraph: 60 to 100 words" },
@@ -78,7 +79,7 @@ export const REASONINGS: { id: Reasoning; label: string; hint: string; about: st
 ];
 export type Run = {
   run_id: string; question: string; started_at: string; finished_at?: string; mode: string; error?: string;
-  length?: Length; reasoning?: Reasoning;
+  length?: Length; reasoning?: Reasoning; source?: RunSource;
   registry: RegistryStats | null; plan: string[]; tasks: Task[]; hiring: Hiring[]; team: Partial<Record<Role, Member[]>>;
   claims: Claim[]; answer: string | null; written_by_name?: string; failovers: Failover[]; dead: string[]; feedback: Feedback[];
   timings?: Partial<Record<string, number>>; calls?: Call[]; kill?: { agent: string; at_ms: number } | null; round_trip_ms?: number | null;
@@ -86,6 +87,10 @@ export type Run = {
     claims: number; claims_tagged_pct: number; claims_supported: number; bad_agents_rejected: string;
     third_party_tried: number; third_party_passed: number; failovers: number; failover_ms: number | null; feedback_written: string;
   }>;
+};
+export type ValidationRow = {
+  claim_id?: string; claim?: string; quote?: string; source_url?: string; verdict?: string;
+  produced_by?: string; verified_by?: string; reason?: string; [k: string]: unknown;
 };
 export type Compare = {
   rows: { question: string; baseline_used: number; baseline_unsupported: number; ours_used: number; ours_unsupported: number }[];

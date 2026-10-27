@@ -1,0 +1,1433 @@
+{
+  "dead": [],
+  "kill": null,
+  "mode": "groq \u00b7 openai/gpt-oss-120b",
+  "plan": [
+    "Why is software architecture important for project success and maintainability?",
+    "How does good software architecture affect scalability, performance, and team collaboration?",
+    "What are key principles and best practices for designing effective software architecture?"
+  ],
+  "team": {
+    "reader": [
+      {
+        "name": "Fact Extractor",
+        "asset": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse"
+      }
+    ],
+    "planner": [
+      {
+        "name": "Question Planner",
+        "asset": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK"
+      }
+    ],
+    "reasoner": [
+      {
+        "name": "Claim Builder",
+        "asset": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR"
+      }
+    ],
+    "verifier": [
+      {
+        "name": "Fact Checker",
+        "asset": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3"
+      }
+    ],
+    "generator": [
+      {
+        "name": "Answer Writer",
+        "asset": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX"
+      }
+    ],
+    "retriever": [
+      {
+        "name": "Source Finder (2)",
+        "asset": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag"
+      },
+      {
+        "name": "Source Finder",
+        "asset": "DjE7pFQnyqPvXmNsLAxco4FgsLrSD8AdQRB6MNBPWGyd"
+      }
+    ]
+  },
+  "calls": [
+    {
+      "ms": 897,
+      "ok": true,
+      "role": "planner",
+      "agent": "Question Planner",
+      "at_ms": 4425,
+      "task_id": "p1"
+    },
+    {
+      "ms": 2426,
+      "ok": true,
+      "role": "retriever",
+      "agent": "Source Finder (2)",
+      "at_ms": 5328,
+      "task_id": "t1"
+    },
+    {
+      "ms": 1608,
+      "ok": true,
+      "role": "retriever",
+      "agent": "Source Finder (2)",
+      "at_ms": 7758,
+      "task_id": "t2"
+    },
+    {
+      "ms": 2025,
+      "ok": true,
+      "role": "retriever",
+      "agent": "Source Finder (2)",
+      "at_ms": 9371,
+      "task_id": "t3"
+    },
+    {
+      "ms": 24,
+      "ok": true,
+      "role": "reader",
+      "agent": "Fact Extractor",
+      "at_ms": 11403,
+      "task_id": "t1-read"
+    },
+    {
+      "ms": 23,
+      "ok": true,
+      "role": "reader",
+      "agent": "Fact Extractor",
+      "at_ms": 11433,
+      "task_id": "t2-read"
+    },
+    {
+      "ms": 27,
+      "ok": true,
+      "role": "reader",
+      "agent": "Fact Extractor",
+      "at_ms": 11463,
+      "task_id": "t3-read"
+    },
+    {
+      "ms": 890,
+      "ok": true,
+      "role": "reasoner",
+      "agent": "Claim Builder",
+      "at_ms": 11497,
+      "task_id": "t1-reason"
+    },
+    {
+      "ms": 677,
+      "ok": true,
+      "role": "reasoner",
+      "agent": "Claim Builder",
+      "at_ms": 12395,
+      "task_id": "t2-reason"
+    },
+    {
+      "ms": 1054,
+      "ok": true,
+      "role": "reasoner",
+      "agent": "Claim Builder",
+      "at_ms": 13077,
+      "task_id": "t3-reason"
+    },
+    {
+      "ms": 584,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 14139,
+      "task_id": "v-c1"
+    },
+    {
+      "ms": 898,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 14140,
+      "task_id": "v-c2"
+    },
+    {
+      "ms": 848,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 14140,
+      "task_id": "v-c3"
+    },
+    {
+      "ms": 559,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 15045,
+      "task_id": "v-c4"
+    },
+    {
+      "ms": 565,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 15045,
+      "task_id": "v-c5"
+    },
+    {
+      "ms": 659,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 15045,
+      "task_id": "v-c6"
+    },
+    {
+      "ms": 504,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 15712,
+      "task_id": "v-c7"
+    },
+    {
+      "ms": 1261,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 15713,
+      "task_id": "v-c8"
+    },
+    {
+      "ms": 1367,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 15713,
+      "task_id": "v-c9"
+    },
+    {
+      "ms": 493,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 17093,
+      "task_id": "v-c10"
+    },
+    {
+      "ms": 412,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 17093,
+      "task_id": "v-c11"
+    },
+    {
+      "ms": 411,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 17094,
+      "task_id": "v-c12"
+    },
+    {
+      "ms": 560,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 17596,
+      "task_id": "v-c13"
+    },
+    {
+      "ms": 565,
+      "ok": true,
+      "role": "verifier",
+      "agent": "Fact Checker",
+      "at_ms": 17596,
+      "task_id": "v-c14"
+    },
+    {
+      "ms": 1253,
+      "ok": true,
+      "role": "generator",
+      "agent": "Answer Writer",
+      "at_ms": 18171,
+      "task_id": "g1"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "t1",
+      "web": "why is software architecture important for project success",
+      "facts": [
+        {
+          "quote": "Software architecture is fundamental to the success of any software development project.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "In this article, we explore the importance of software architecture and its impact on modern development.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "Software architecture provides a clear framework for project management, helping teams plan, execute, and monitor development activities.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "Due to initial poor design and growing architecture erosion, Netscape spent two years redeveloping the Mozilla Web browser, demonstrating the importance of proactive architecture management to prevent costly repairs and project delays.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture"
+        },
+        {
+          "quote": "Software architecture plays a crucial role in the development process, influencing the usability, scalability, and performance of a system.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "Software architecture is the high-level structure of a software system.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "Ultimately, a well-conceived architecture serves as the backbone of any successful software project, shaping the system\u2019s behavior and supporting its long-term growth.",
+          "source_url": "https://vfunction.com/blog/what-is-software-architecture"
+        },
+        {
+          "quote": "The significance of software architecture extends far beyond initial design\u2014it is a decisive factor in the overall success of a software system.",
+          "source_url": "https://vfunction.com/blog/what-is-software-architecture"
+        },
+        {
+          "quote": "Software architecture design determines how to build a software system that satisfies functional and non-functional requirements, balancing factors such as maintainability, effort, engineering velocity, resilience, robustness, scalability and operational costs.",
+          "source_url": "https://vfunction.com/blog/what-is-software-architecture"
+        },
+        {
+          "quote": "Software architecture is the set of structures needed to reason about a software system and the discipline of creating such structures and systems.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture"
+        },
+        {
+          "quote": "The architecture of a software system is a metaphor, analogous to the architecture of a building.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture"
+        },
+        {
+          "quote": "Architectural decision making is a core responsibility of software architects; additional motivation for/of the importance of architectural decisions as a first-class concept in software architecture can be found online.",
+          "source_url": "https://en.wikipedia.org/wiki/Architectural_decision"
+        },
+        {
+          "quote": "In software engineering and software architecture design, architectural decisions are design decisions that address architecturally significant requirements; they are perceived as hard to make and/or costly to change.",
+          "source_url": "https://en.wikipedia.org/wiki/Architectural_decision"
+        },
+        {
+          "quote": "Software architecture design is a wicked problem, therefore architectural decisions are difficult to get right.",
+          "source_url": "https://en.wikipedia.org/wiki/Architectural_decision"
+        },
+        {
+          "quote": "The software architecture of a system represents the design decisions related to overall system structure and behavior.",
+          "source_url": "https://www.sei.cmu.edu/software-architecture"
+        },
+        {
+          "quote": "Software architecture supports analysis of system qualities when teams are making decisions about the system rather than after implementation, integration, or deployment.",
+          "source_url": "https://www.sei.cmu.edu/software-architecture"
+        },
+        {
+          "quote": "An effective architecture serves as the conceptual glue that holds every phase of the project together for all of its stakeholders, enabling agility, time and cost savings, and early identification of design risks.",
+          "source_url": "https://www.sei.cmu.edu/software-architecture"
+        },
+        {
+          "quote": "In software engineering, service-oriented architecture (SOA) is an architectural style that focuses on discrete services instead of a monolithic design.",
+          "source_url": "https://en.wikipedia.org/wiki/Service-oriented_architecture"
+        },
+        {
+          "quote": "Service-oriented architecture integrates distributed, separately maintained and deployed software components.",
+          "source_url": "https://en.wikipedia.org/wiki/Service-oriented_architecture"
+        },
+        {
+          "quote": "By consequence, it is also applied in the field of software design where services are provided to the other components by application components, through a communication protocol over a network.",
+          "source_url": "https://en.wikipedia.org/wiki/Service-oriented_architecture"
+        }
+      ],
+      "search": "Software architecture importance",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "sources": [
+        {
+          "url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+          "title": "The Importance of Software Architecture in Modern Development | Thinklogic Insights"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Software_architecture",
+          "title": "Software architecture"
+        },
+        {
+          "url": "https://vfunction.com/blog/what-is-software-architecture",
+          "title": "What is Software Architecture? A Comprehensive Guide - vFunction"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Architectural_decision",
+          "title": "Architectural decision"
+        },
+        {
+          "url": "https://www.sei.cmu.edu/software-architecture",
+          "title": "Software Architecture | CMU Software Engineering Institute"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Service-oriented_architecture",
+          "title": "Service-oriented architecture"
+        }
+      ],
+      "question": "Why is software architecture important for project success and maintainability?",
+      "planned_by": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+      "reasoned_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "planned_by_name": "Question Planner",
+      "reasoned_by_name": "Claim Builder",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "t2",
+      "web": "impact of good software architecture on scalability performance and team collaboration",
+      "facts": [
+        {
+          "quote": "Improved Scalability and Performance: A good architecture considers how the system can handle user growth or data volume.",
+          "source_url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture"
+        },
+        {
+          "quote": "Software architecture plays a crucial role in the development process, influencing the usability, scalability, and performance of a system.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "System qualities: A good software architecture considers how the overall system will perform in various aspects beyond core functionality.",
+          "source_url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture"
+        },
+        {
+          "quote": "This section will explore the core concepts that shape software architecture, exploring how high-level decisions about a system\u2019s structure and organization impact its functionality, maintainability, and overall success.",
+          "source_url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture"
+        },
+        {
+          "quote": "Beyond the flashy user interfaces and innovative features lies the unseen software architecture that shapes a product\u2019s functionality, performance, and success.",
+          "source_url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture"
+        },
+        {
+          "quote": "The success of any complex software hinges on a well-defined software architecture \u2013 a carefully designed underlying structure.",
+          "source_url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture"
+        },
+        {
+          "quote": "In this article, we explore the importance of software architecture and its impact on modern development.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "Collaboration and Communication: Effective collaboration and communication among team members are essential for successful architecture design.",
+          "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development"
+        },
+        {
+          "quote": "In software engineering, a microservice architecture is an architectural pattern that organizes an application into a collection of loosely coupled, fine-grained services that communicate through lightweight protocols.",
+          "source_url": "https://en.wikipedia.org/wiki/Microservices"
+        },
+        {
+          "quote": "Also in 2005, Alistair Cockburn wrote about hexagonal architecture which is a software design pattern that is used along with the microservices.",
+          "source_url": "https://en.wikipedia.org/wiki/Microservices"
+        },
+        {
+          "quote": "Determining the appropriate level of (micro)service granularity in a microservices architecture often requires iterative collaboration between architects and developers.",
+          "source_url": "https://en.wikipedia.org/wiki/Microservices"
+        },
+        {
+          "quote": "In the same way, your app's architecture is the foundation that dictates its performance, scalability, and ability to evolve.",
+          "source_url": "https://www.wondermentapps.com/blog/software-architecture-best-practices"
+        },
+        {
+          "quote": "Software architecture and, subsequently, software architects inherently deal with uncertainties.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architect"
+        },
+        {
+          "quote": "The outputs of the analysis activity are those requirements that have a measurable impact on a software system's architecture, called architecturally significant requirements.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture"
+        },
+        {
+          "quote": "As software architecture provides a fundamental structure of a software system, its evolution and maintenance would necessarily impact its fundamental structure.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture"
+        },
+        {
+          "quote": "Architecture erosion can decrease software performance, substantially increase evolutionary costs, and degrade software quality.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture"
+        },
+        {
+          "quote": "Imagine your software architecture as the blueprint for a skyscraper.",
+          "source_url": "https://www.wondermentapps.com/blog/software-architecture-best-practices"
+        },
+        {
+          "quote": "The table below outlines the fundamental principles that define a robust, future-proof software architecture.",
+          "source_url": "https://www.wondermentapps.com/blog/software-architecture-best-practices"
+        },
+        {
+          "quote": "A software architect is a software engineer responsible for moderate-level design choices related to overall system structure and behavior.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architect"
+        },
+        {
+          "quote": "It's a software architect's responsibility to match architectural characteristics (aka non-functional requirements) with business requirements.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architect"
+        }
+      ],
+      "search": "Software architecture scalability performance collaboration",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "sources": [
+        {
+          "url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture",
+          "title": "In-Depth Insights into Software Architecture - Software Testing and Development Company"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Microservices",
+          "title": "Microservices"
+        },
+        {
+          "url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+          "title": "The Importance of Software Architecture in Modern Development | Thinklogic Insights"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Software_architect",
+          "title": "Software architect"
+        },
+        {
+          "url": "https://www.wondermentapps.com/blog/software-architecture-best-practices",
+          "title": "Software Architecture Best Practices for Scalable Apps"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Software_architecture",
+          "title": "Software architecture"
+        }
+      ],
+      "question": "How does good software architecture affect scalability, performance, and team collaboration?",
+      "planned_by": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+      "reasoned_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "planned_by_name": "Question Planner",
+      "reasoned_by_name": "Claim Builder",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "t3",
+      "web": "key principles and best practices for effective software architecture design",
+      "facts": [
+        {
+          "quote": "Explore best practices for data warehouse architecture and design to optimize storage, retrieval and analytics for scalable, high-performance data management.",
+          "source_url": "https://www.snowflake.com/en/fundamentals/data-warehouse-architecture-and-design"
+        },
+        {
+          "quote": "This guide delves into the critical aspects of data warehouse architecture and design, emphasizing best practices and methodologies to optimize performance and scalability.",
+          "source_url": "https://www.snowflake.com/en/fundamentals/data-warehouse-architecture-and-design"
+        },
+        {
+          "quote": "By embracing best practices in architecture and design, and by clearly distinguishing the roles of data warehouses and operational data stores, businesses can ensure robust data management, insightful analytics and data-driven decision-making.",
+          "source_url": "https://www.snowflake.com/en/fundamentals/data-warehouse-architecture-and-design"
+        },
+        {
+          "quote": "Tips & Best Practices### What Is Microservices Architecture?",
+          "source_url": "https://www.snowflake.com/en/fundamentals/data-warehouse-architecture-and-design"
+        },
+        {
+          "quote": "Coding best practices or programming best practices are a set of informal, sometimes personal, rules (best practices) that many software developers, in computer programming follow to improve software quality.",
+          "source_url": "https://en.wikipedia.org/wiki/Coding_best_practices"
+        },
+        {
+          "quote": "Software architecture is concerned with deciding what has to be done and which program component is going to do it (how something is done is left to the detailed design phase below).",
+          "source_url": "https://en.wikipedia.org/wiki/Coding_best_practices"
+        },
+        {
+          "quote": "Effective design is paramount to help ensure that a data warehouse meets organizational needs and adapts to evolving data landscapes.",
+          "source_url": "https://www.snowflake.com/en/fundamentals/data-warehouse-architecture-and-design"
+        },
+        {
+          "quote": "Principle 6.4: Software adopts open design practices and peer reviewed code is used where possible.",
+          "source_url": "https://assets.publishing.service.gov.uk/media/5a8229c2ed915d74e62361f1/cyber-security-connected-automated-vehicles-key-principles.pdf"
+        },
+        {
+          "quote": "Software architecture description is the set of practices for expressing, communicating and analysing software architectures (also called architectural rendering), and the result of applying such practices through a work product expressing a software architecture (ISO/IEC/IEEE 42010).",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture_description"
+        },
+        {
+          "quote": "Architecture description defines the practices, techniques and types of representations used by software architects to record a software architecture.",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture_description"
+        },
+        {
+          "quote": "For small simple projects it may be feasible to combine architecture with design and adopt a very simple life cycle.",
+          "source_url": "https://en.wikipedia.org/wiki/Coding_best_practices"
+        },
+        {
+          "quote": "Influences on architecture description came from the areas of Software Engineering (such as data abstraction and programming in the large) and from system design (such as SARA).",
+          "source_url": "https://en.wikipedia.org/wiki/Software_architecture_description"
+        },
+        {
+          "quote": "The Key Principles of Cyber Security for Connected and Automated Vehicles Government 2 9 13 17 6 5 10 14 Contents Intelligent Transport System (ITS) & Connected and Automated Vehicle (CAV) System Security Principles: \u2022 1.",
+          "source_url": "https://assets.publishing.service.gov.uk/media/5a8229c2ed915d74e62361f1/cyber-security-connected-automated-vehicles-key-principles.pdf"
+        },
+        {
+          "quote": "Organisations product aftercare ITS/CAV System Design Principles: \u2022 4.",
+          "source_url": "https://assets.publishing.service.gov.uk/media/5a8229c2ed915d74e62361f1/cyber-security-connected-automated-vehicles-key-principles.pdf"
+        },
+        {
+          "quote": "Principle 6.4: Software adopts open design practices and peer reviewed code is used where possible.",
+          "source_url": "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/661135/cyber-security-connected-automated-vehicles-key-principles.pdf"
+        },
+        {
+          "quote": "Agile modeling (AM) is a methodology for modeling and documenting software systems based on best practices.",
+          "source_url": "https://en.wikipedia.org/wiki/Agile_software_development"
+        },
+        {
+          "quote": "The Key Principles of Cyber Security for Connected and Automated Vehicles Government 2 9 13 17 6 5 10 14 Contents Intelligent Transport System (ITS) & Connected and Automated Vehicle (CAV) System Security Principles: \u2022 1.",
+          "source_url": "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/661135/cyber-security-connected-automated-vehicles-key-principles.pdf"
+        },
+        {
+          "quote": "Organisations product aftercare ITS/CAV System Design Principles: \u2022 4.",
+          "source_url": "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/661135/cyber-security-connected-automated-vehicles-key-principles.pdf"
+        },
+        {
+          "quote": "Agile software development is an umbrella term for approaches to developing software that reflect the values and principles agreed upon by The Agile Alliance, a group of 17 software practitioners, in 2001.",
+          "source_url": "https://en.wikipedia.org/wiki/Agile_software_development"
+        },
+        {
+          "quote": "The practitioners cite inspiration from new practices at the time including extreme programming, scrum, dynamic systems development method, adaptive software development, and being sympathetic to the need for an alternative to documentation-driven, heavyweight software development processes.",
+          "source_url": "https://en.wikipedia.org/wiki/Agile_software_development"
+        }
+      ],
+      "search": "Software architecture principles best practices",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "sources": [
+        {
+          "url": "https://www.snowflake.com/en/fundamentals/data-warehouse-architecture-and-design",
+          "title": "Data Warehouse Architecture and Design: Best Practices"
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Coding_best_practices",
+          "title": "Coding best practices"
+        },
+        {
+          "url": "https://assets.publishing.service.gov.uk/media/5a8229c2ed915d74e62361f1/cyber-security-connected-automated-vehicles-key-principles.pdf",
+          "title": "[PDF] The Key Principles of Cyber Security for Connected and Automated ..."
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Software_architecture_description",
+          "title": "Software architecture description"
+        },
+        {
+          "url": "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/661135/cyber-security-connected-automated-vehicles-key-principles.pdf",
+          "title": "The Key Principles of Cyber Security for Connected and ..."
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Agile_software_development",
+          "title": "Agile software development"
+        }
+      ],
+      "question": "What are key principles and best practices for designing effective software architecture?",
+      "planned_by": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+      "reasoned_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "planned_by_name": "Question Planner",
+      "reasoned_by_name": "Claim Builder",
+      "retrieved_by_name": "Source Finder (2)"
+    }
+  ],
+  "answer": "Software architecture is the foundational design that determines a system\u2019s usability, scalability, performance, and long\u2011term maintainability. [c1][c4][c9]\n\nIt provides a clear framework for project management, enabling teams to plan, execute, and monitor development activities while defining what components will perform which functions, leaving implementation details to later design phases. [c2][c10] Effective collaboration and communication among team members are essential to create such an architecture, ensuring that the design reflects both functional and non\u2011functional requirements. [c8] The architecture description itself follows standardized practices for expressing, communicating, and analysing the design, as defined by ISO/IEC/IEEE\u202f42010. [c12] For small, simple projects, architecture and detailed design can be combined into a very simple life\u2011cycle. [c13]\n\nA well\u2011conceived architecture directly influences key quality attributes: it shapes usability, scalability, and performance, and determines how the system will handle user growth or increasing data volume. [c3][c6][c7] By balancing maintainability, effort, velocity, resilience, robustness, scalability, and operational costs, the architecture supports both current needs and future expansion. [c5] Open design practices and peer\u2011reviewed code further strengthen the architecture\u2019s robustness and adaptability. [c11][c14]",
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Software architecture is fundamental to the success of any software development project.",
+      "quote": "Software architecture is fundamental to the success of any software development project.",
+      "reason": "The article directly states the claim",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "Why is software architecture important for project success and maintainability?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c2",
+      "text": "Software architecture provides a clear framework for project management, helping teams plan, execute, and monitor development activities.",
+      "quote": "Software architecture provides a clear framework for project management, helping teams plan, execute, and monitor development activities.",
+      "reason": "The article's quote exactly matches the claim, confirming support.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "Why is software architecture important for project success and maintainability?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c3",
+      "text": "Software architecture influences the usability, scalability, and performance of a system.",
+      "quote": "Software architecture plays a crucial role in the development process, influencing the usability, scalability, and performance of a system.",
+      "reason": "The quote directly states that software architecture influences usability, scalability, and performance, matching the claim.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "Why is software architecture important for project success and maintainability?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c4",
+      "text": "A well-conceived architecture serves as the backbone of any successful software project, shaping system behavior and supporting long\u2011term growth.",
+      "quote": "Ultimately, a well-conceived architecture serves as the backbone of any successful software project, shaping the system\u2019s behavior and supporting its long-term growth.",
+      "reason": "The article\u2019s quote directly matches and affirms the claim",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://vfunction.com/blog/what-is-software-architecture",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "Why is software architecture important for project success and maintainability?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c5",
+      "text": "Software architecture design determines how to build a system that satisfies functional and non\u2011functional requirements, balancing maintainability, effort, velocity, resilience, robustness, scalability, and operational costs.",
+      "quote": "Software architecture design determines how to build a software system that satisfies functional and non-functional requirements, balancing factors such as maintainability, effort, engineering velocity, resilience, robustness, scalability and operational costs.",
+      "reason": "The article's quote directly mirrors the claim's wording and concepts",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://vfunction.com/blog/what-is-software-architecture",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "Why is software architecture important for project success and maintainability?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c6",
+      "text": "A good architecture considers how the system can handle user growth or data volume, improving scalability and performance.",
+      "quote": "Improved Scalability and Performance: A good architecture considers how the system can handle user growth or data volume.",
+      "reason": "The quote directly states that good architecture considers handling user growth or data volume, matching the claim.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://shiftasia.com/column/in-depth-insights-into-software-architecture",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "How does good software architecture affect scalability, performance, and team collaboration?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c7",
+      "text": "Software architecture influences the usability, scalability, and performance of a system.",
+      "quote": "Software architecture plays a crucial role in the development process, influencing the usability, scalability, and performance of a system.",
+      "reason": "The quote directly states that software architecture influences usability, scalability, and performance, matching the claim.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "How does good software architecture affect scalability, performance, and team collaboration?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c8",
+      "text": "Effective collaboration and communication among team members are essential for successful architecture design.",
+      "quote": "Collaboration and Communication: Effective collaboration and communication among team members are essential for successful architecture design.",
+      "reason": "The quote directly states that effective collaboration and communication are essential for successful architecture design.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://www.thinklogic.com/post/the-importance-of-software-architecture-in-modern-development",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "How does good software architecture affect scalability, performance, and team collaboration?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c9",
+      "text": "An app's architecture is the foundation that dictates its performance, scalability, and ability to evolve.",
+      "quote": "In the same way, your app's architecture is the foundation that dictates its performance, scalability, and ability to evolve.",
+      "reason": "The quote directly states that architecture dictates performance, scalability, and evolution, matching the claim.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://www.wondermentapps.com/blog/software-architecture-best-practices",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "How does good software architecture affect scalability, performance, and team collaboration?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c10",
+      "text": "Software architecture is concerned with deciding what has to be done and which program component is going to do it (how something is done is left to the detailed design phase below).",
+      "quote": "Software architecture is concerned with deciding what has to be done and which program component is going to do it (how something is done is left to the detailed design phase below).",
+      "reason": "The article's quote exactly matches the claim's statement",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://en.wikipedia.org/wiki/Coding_best_practices",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "What are key principles and best practices for designing effective software architecture?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c11",
+      "text": "Principle 6.4: Software adopts open design practices and peer reviewed code is used where possible.",
+      "quote": "Principle 6.4: Software adopts open design practices and peer reviewed code is used where possible.",
+      "reason": "The article directly states the same principle, confirming the claim.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://assets.publishing.service.gov.uk/media/5a8229c2ed915d74e62361f1/cyber-security-connected-automated-vehicles-key-principles.pdf",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "What are key principles and best practices for designing effective software architecture?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c12",
+      "text": "Software architecture description is the set of practices for expressing, communicating and analysing software architectures (also called architectural rendering), and the result of applying such practices through a work product expressing a software architecture (ISO/IEC/IEEE 42010).",
+      "quote": "Software architecture description is the set of practices for expressing, communicating and analysing software architectures (also called architectural rendering), and the result of applying such practices through a work product expressing a software architecture (ISO/IEC/IEEE 42010).",
+      "reason": "The article quote exactly matches the claim's wording",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://en.wikipedia.org/wiki/Software_architecture_description",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "What are key principles and best practices for designing effective software architecture?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c13",
+      "text": "For small simple projects it may be feasible to combine architecture with design and adopt a very simple life cycle.",
+      "quote": "For small simple projects it may be feasible to combine architecture with design and adopt a very simple life cycle.",
+      "reason": "The article's quote exactly matches the claim, confirming it.",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://en.wikipedia.org/wiki/Coding_best_practices",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "What are key principles and best practices for designing effective software architecture?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    },
+    {
+      "id": "c14",
+      "text": "Principle 6.4: Software adopts open design practices and peer reviewed code is used where possible.",
+      "quote": "Principle 6.4: Software adopts open design practices and peer reviewed code is used where possible.",
+      "reason": "The article directly states the same principle, confirming the claim",
+      "status": "supported",
+      "read_by": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "source_url": "https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/661135/cyber-security-connected-automated-vehicles-key-principles.pdf",
+      "produced_by": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "verified_by": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "read_by_name": "Fact Extractor",
+      "retrieved_by": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "sub_question": "What are key principles and best practices for designing effective software architecture?",
+      "produced_by_name": "Claim Builder",
+      "verified_by_name": "Fact Checker",
+      "retrieved_by_name": "Source Finder (2)"
+    }
+  ],
+  "hiring": [
+    {
+      "id": "planner-a",
+      "name": "Question Planner",
+      "ours": true,
+      "role": "planner",
+      "asset": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+      "bench": {
+        "id": 1,
+        "score": 75.0,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "accuracy": 25.0,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 85.6,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 44,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "generator-a",
+      "name": "Answer Writer",
+      "ours": true,
+      "role": "generator",
+      "asset": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX",
+      "bench": {
+        "id": 3,
+        "score": 71.5,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "honesty": 50.0,
+          "accuracy": 50.0,
+          "grounding": 57.5,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 84.2,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 41,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "retriever-a",
+      "name": "Source Finder",
+      "ours": true,
+      "role": "retriever",
+      "asset": "DjE7pFQnyqPvXmNsLAxco4FgsLrSD8AdQRB6MNBPWGyd",
+      "bench": {
+        "id": 4,
+        "score": 81.2,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "accuracy": 25.0,
+          "grounding": 100.0,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 76.2,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 30,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "retriever-b",
+      "name": "Source Finder (2)",
+      "ours": true,
+      "role": "retriever",
+      "asset": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "bench": {
+        "id": 5,
+        "score": 81.2,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "accuracy": 25.0,
+          "grounding": 100.0,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 77.0,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 56,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "bad-slow",
+      "name": "Slow Bot",
+      "ours": true,
+      "role": "retriever",
+      "asset": "DDrF9QRCSZjkJ1Mq7FrGdz7DvWTdBLLoXLwVRLNXN1yN",
+      "score": 0.0,
+      "stage": "reputation",
+      "reason": "independent average 0.0 over 13 ratings",
+      "result": "failed",
+      "ratings": 13,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "EZyJnzsb9E3BXJ3SZwdeDsdt6ZaqXVoGujvFSwt8d9XG",
+      "name": "COLA",
+      "ours": false,
+      "role": "retriever",
+      "asset": "EZyJnzsb9E3BXJ3SZwdeDsdt6ZaqXVoGujvFSwt8d9XG",
+      "score": 0.0,
+      "stage": "reputation",
+      "reason": "independent average 0.0 over 19 ratings",
+      "result": "failed",
+      "ratings": 19,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "7EXVEmPo7K1jNVTgnUgj6n7m2B1Txc2LnofKffi33bJE",
+      "name": "SOL",
+      "ours": false,
+      "role": "retriever",
+      "asset": "7EXVEmPo7K1jNVTgnUgj6n7m2B1Txc2LnofKffi33bJE",
+      "score": 0.0,
+      "stage": "reputation",
+      "reason": "independent average 0.0 over 17 ratings",
+      "result": "failed",
+      "ratings": 17,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "8ZtRcPuiFYCkexNJrhX2TNLDaoLVuzmv4Zc8iVjiLrYc",
+      "name": "K-Gov Agent Network",
+      "ours": false,
+      "role": "retriever",
+      "asset": "8ZtRcPuiFYCkexNJrhX2TNLDaoLVuzmv4Zc8iVjiLrYc",
+      "score": null,
+      "stage": "trial",
+      "tools": [
+        "search_procurement_opportunities",
+        "analyze_property_parcel",
+        "analyze_corporate_filings",
+        "analyze_court_auction",
+        "search_sentencing_cases",
+        "run_cross_core_brief",
+        "get_payment_quote",
+        "get_ai_budget_status"
+      ],
+      "reason": "live MCP server with 8 tools (search_procurement_opportunities, analyze_property_parcel, analyze_corporate_filings, \u2026); none takes a Sworn task, so it can't do this job",
+      "result": "failed",
+      "ratings": 0,
+      "protocol": "mcp",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "5XMuugZU5fDgk7NRUXeHg4YHyJ3P4RtLZkLFipVzAgcr",
+      "name": "Hosted Chat Smoke Test",
+      "ours": false,
+      "role": "retriever",
+      "asset": "5XMuugZU5fDgk7NRUXeHg4YHyJ3P4RtLZkLFipVzAgcr",
+      "score": 0.0,
+      "stage": "reputation",
+      "reason": "independent average 0.0 over 5 ratings",
+      "result": "failed",
+      "ratings": 5,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "GTXxjEkKXvM4KtRsHhscdcAx233Xp9cdBrfZaY5NahSJ",
+      "name": "Hosted Agent Smoke Test",
+      "ours": false,
+      "role": "retriever",
+      "asset": "GTXxjEkKXvM4KtRsHhscdcAx233Xp9cdBrfZaY5NahSJ",
+      "score": 0.0,
+      "stage": "reputation",
+      "reason": "independent average 0.0 over 5 ratings",
+      "result": "failed",
+      "ratings": 5,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "2jKtJ51tbLf8tsko59483ksnxpnRK1AHyaRdZQhMoq6y",
+      "name": "Xona Agent",
+      "ours": false,
+      "role": "retriever",
+      "asset": "2jKtJ51tbLf8tsko59483ksnxpnRK1AHyaRdZQhMoq6y",
+      "score": null,
+      "stage": "trial",
+      "tools": [
+        "list-resources",
+        "image-creative-director",
+        "image-designer",
+        "image-nano-banana-pro",
+        "image-nano-banana",
+        "image-grok-imagine",
+        "image-model-qwen-image",
+        "image-model-seedream-4.5",
+        "image-flux-2-pro",
+        "image-flux-2-max",
+        "image-flux-2-flex",
+        "image-gpt-image-2"
+      ],
+      "reason": "live MCP server with 39 tools (list-resources, image-creative-director, image-designer, \u2026); none takes a Sworn task, so it can't do this job",
+      "result": "failed",
+      "ratings": 0,
+      "protocol": "mcp",
+      "registry": "sati",
+      "self_ratings": 0
+    },
+    {
+      "id": "3bRk2B8J6gKSdALTq7d4oHPapyXA6QjKXVyLVCSmhWqB",
+      "name": "AgentBox: agentbox-operator-2420",
+      "ours": false,
+      "role": "retriever",
+      "asset": "3bRk2B8J6gKSdALTq7d4oHPapyXA6QjKXVyLVCSmhWqB",
+      "score": null,
+      "stage": "alive",
+      "reason": "endpoint not responding",
+      "result": "failed",
+      "ratings": 0,
+      "protocol": "mcp",
+      "registry": "sati",
+      "self_ratings": 0
+    },
+    {
+      "id": "EVfF46dAT5fFWQrcQ2jhduLVuowHDcUskRaNd3nWSX7K",
+      "name": "CodeGuardian",
+      "ours": false,
+      "role": "retriever",
+      "asset": "EVfF46dAT5fFWQrcQ2jhduLVuowHDcUskRaNd3nWSX7K",
+      "score": null,
+      "stage": "alive",
+      "reason": "endpoint not responding",
+      "result": "failed",
+      "ratings": 0,
+      "protocol": "mcp",
+      "registry": "sati",
+      "self_ratings": 0
+    },
+    {
+      "id": "reader-a",
+      "name": "Fact Extractor",
+      "ours": true,
+      "role": "reader",
+      "asset": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "bench": {
+        "id": 2,
+        "score": 100.0,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "accuracy": 100.0,
+          "grounding": 100.0,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 100.0,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 38,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "bad-liar",
+      "name": "Fake-Quote Bot",
+      "ours": true,
+      "role": "reasoner",
+      "asset": "Aav1ANH241JWqKK9kWtnH8NcZe861ig6mvB6juUiFxeQ",
+      "score": 6.2,
+      "stage": "reputation",
+      "reason": "independent average 6.2 over 13 ratings",
+      "result": "failed",
+      "ratings": 13,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "reasoner-a",
+      "name": "Claim Builder",
+      "ours": true,
+      "role": "reasoner",
+      "asset": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "bench": {
+        "id": 7,
+        "score": 100.0,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "honesty": 100.0,
+          "accuracy": 100.0,
+          "grounding": 100.0,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 89.6,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 42,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    },
+    {
+      "id": "verifier-a",
+      "name": "Fact Checker",
+      "ours": true,
+      "role": "verifier",
+      "asset": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "bench": {
+        "id": 6,
+        "score": 90.0,
+        "cached": true,
+        "aspects": {
+          "speed": 100.0,
+          "honesty": 100.0,
+          "accuracy": 50.0,
+          "grounding": 100.0,
+          "reliability": 100.0
+        },
+        "version": "sab-v1"
+      },
+      "score": 89.1,
+      "stage": "hired",
+      "reason": null,
+      "result": "passed",
+      "ratings": 66,
+      "protocol": "a2a",
+      "registry": "8004",
+      "self_ratings": 0
+    }
+  ],
+  "length": "medium",
+  "run_id": "run_1793088992100",
+  "source": "mcp",
+  "metrics": {
+    "claims": 14,
+    "failovers": 0,
+    "failover_ms": null,
+    "claims_supported": 14,
+    "feedback_written": "0/15",
+    "claims_tagged_pct": 100,
+    "third_party_tried": 8,
+    "third_party_passed": 0,
+    "bad_agents_rejected": "2/2"
+  },
+  "timings": {
+    "hire": 4384,
+    "plan": 901,
+    "read": 92,
+    "reason": 2641,
+    "record": 46168,
+    "verify": 4030,
+    "generate": 1254,
+    "retrieve": 6074
+  },
+  "feedback": [
+    {
+      "name": "AgentBox: agentbox-operator-2420",
+      "ours": false,
+      "role": "retriever",
+      "asset": "3bRk2B8J6gKSdALTq7d4oHPapyXA6QjKXVyLVCSmhWqB",
+      "error": "SATI feedback is off (set SATI_FEEDBACK=on)",
+      "score": 0,
+      "outcome": "dead",
+      "registry": "sati"
+    },
+    {
+      "name": "CodeGuardian",
+      "ours": false,
+      "role": "retriever",
+      "asset": "EVfF46dAT5fFWQrcQ2jhduLVuowHDcUskRaNd3nWSX7K",
+      "error": "SATI feedback is off (set SATI_FEEDBACK=on)",
+      "score": 0,
+      "outcome": "dead",
+      "registry": "sati"
+    },
+    {
+      "name": "Question Planner",
+      "ours": true,
+      "role": "planner",
+      "asset": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "passed",
+      "registry": "8004"
+    },
+    {
+      "name": "Source Finder (2)",
+      "ours": true,
+      "role": "retriever",
+      "asset": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "passed",
+      "registry": "8004"
+    },
+    {
+      "name": "Fact Extractor",
+      "ours": true,
+      "role": "reader",
+      "asset": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "passed",
+      "registry": "8004"
+    },
+    {
+      "name": "Claim Builder",
+      "ours": true,
+      "role": "reasoner",
+      "asset": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "passed",
+      "registry": "8004"
+    },
+    {
+      "name": "Fact Checker",
+      "ours": true,
+      "role": "verifier",
+      "asset": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "passed",
+      "registry": "8004"
+    },
+    {
+      "name": "Answer Writer",
+      "ours": true,
+      "role": "generator",
+      "asset": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "passed",
+      "registry": "8004"
+    },
+    {
+      "name": "Claim Builder",
+      "ours": true,
+      "role": "reasoner",
+      "asset": "FyovroyRF16n12sHisKckgMCSy796ejRXCmuwRj9wxWR",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 7
+    },
+    {
+      "name": "Fact Extractor",
+      "ours": true,
+      "role": "reader",
+      "asset": "527BMjX61zEQddDTYe5anb54Lt5ZZ6odNUqmwc93nEse",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 100,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 2
+    },
+    {
+      "name": "Source Finder",
+      "ours": true,
+      "role": "retriever",
+      "asset": "DjE7pFQnyqPvXmNsLAxco4FgsLrSD8AdQRB6MNBPWGyd",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 81,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 4
+    },
+    {
+      "name": "Fact Checker",
+      "ours": true,
+      "role": "verifier",
+      "asset": "G5GD28AGhuNwqCAqzrqJUYTkrL1eq6XLy6bzLicfeoo3",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 90,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 6
+    },
+    {
+      "name": "Source Finder (2)",
+      "ours": true,
+      "role": "retriever",
+      "asset": "9rhBT8pg47QArPEas2AG4Ugvz2qEMEpmgBy5NXfCptag",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 81,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 5
+    },
+    {
+      "name": "Question Planner",
+      "ours": true,
+      "role": "planner",
+      "asset": "9XRBn6QjyxhPYXsWjNUsTCXTuNUXF7RefGBsvNNUUjXK",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 75,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 1
+    },
+    {
+      "name": "Answer Writer",
+      "ours": true,
+      "role": "generator",
+      "asset": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX",
+      "error": "Simulation failed. \nMessage: Transaction simulation failed: Attempt to debit an account but found no record of a prior credit.. \nLogs: \n[]. \nCatch the `SendTransactionError` and call `getLogs()` on it for full details.",
+      "score": 72,
+      "outcome": "sab-v1",
+      "registry": "8004",
+      "benchmark_id": 3
+    }
+  ],
+  "question": "importance of architecture in software development",
+  "registry": {
+    "sati": {
+      "total": 122,
+      "synced_at": "2026-10-25T16:00:56.788Z",
+      "with_profile": 104,
+      "with_endpoint": 31
+    },
+    "total": 4838,
+    "with_skills": 24,
+    "with_profile": 738,
+    "with_endpoint": 90
+  },
+  "failovers": [],
+  "reasoning": "standard",
+  "started_at": "2026-10-27T08:16:32.101683+00:00",
+  "written_by": "GHQJAdavSvwM414wpqNU24J8n6Tx8qPxgJgZEZz9xUgX",
+  "finished_at": "2026-10-27T08:17:37.691724+00:00",
+  "round_trip_ms": 65595,
+  "written_by_name": "Answer Writer"
+}
